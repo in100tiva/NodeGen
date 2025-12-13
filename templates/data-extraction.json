@@ -1,0 +1,54 @@
+{
+  "name": "Extração de Dados",
+  "description": "Template para extrair dados estruturados de documentos",
+  "category": "data-extraction",
+  "nodes": [
+    {
+      "id": "1",
+      "type": "github-repo",
+      "position": { "x": 100, "y": 100 },
+      "data": { "label": "Conexão GitHub", "githubMode": "read" },
+      "inputs": [],
+      "outputs": ["output"]
+    },
+    {
+      "id": "2",
+      "type": "transform",
+      "position": { "x": 400, "y": 150 },
+      "data": { "label": "Extrair Texto", "transformOperation": "extract" },
+      "inputs": ["input"],
+      "outputs": ["output"]
+    },
+    {
+      "id": "3",
+      "type": "llm-model",
+      "position": { "x": 700, "y": 200 },
+      "data": { "label": "Extrair Dados", "model": "openai/gpt-4o" },
+      "inputs": ["input"],
+      "outputs": ["output"]
+    },
+    {
+      "id": "4",
+      "type": "transform",
+      "position": { "x": 1000, "y": 250 },
+      "data": { "label": "Parsear JSON", "transformOperation": "parse" },
+      "inputs": ["input"],
+      "outputs": ["output"]
+    },
+    {
+      "id": "5",
+      "type": "output-display",
+      "position": { "x": 1300, "y": 300 },
+      "data": { "label": "Dados Extraídos", "value": "" },
+      "inputs": ["input"],
+      "outputs": []
+    }
+  ],
+  "edges": [
+    { "id": "e1-2", "source": "1", "sourceHandle": "output", "target": "2", "targetHandle": "input" },
+    { "id": "e2-3", "source": "2", "sourceHandle": "output", "target": "3", "targetHandle": "input" },
+    { "id": "e3-4", "source": "3", "sourceHandle": "output", "target": "4", "targetHandle": "input" },
+    { "id": "e4-5", "source": "4", "sourceHandle": "output", "target": "5", "targetHandle": "input" }
+  ]
+}
+

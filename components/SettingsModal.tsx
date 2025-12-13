@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { useAction } from 'convex/react';
+import { api } from '../convex/_generated/api';
 import { IconX } from './Icons';
 import { AppSettings } from '../types';
 
@@ -11,6 +13,30 @@ interface SettingsModalProps {
 
 const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings, onSave }) => {
   const [key, setKey] = useState(settings.openRouterKey);
+  const [isValidating, setIsValidating] = useState(false);
+  const [validationMessage, setValidationMessage] = useState<string | null>(null);
+  const validateApiKey = useAction(api.openrouter.validateApiKey);
+
+  const handleValidate = async () => {
+    if (!key) return;
+    
+    setIsValidating(true);
+    setValidationMessage(null);
+    
+    try {
+      const result = await validateApiKey({ apiKey: key });
+      if (result.valid) {
+        setValidationMessage('Chave API válida!');
+      } else {
+        setValidationMessage(`Erro: ${result.error}`);
+      }
+    } catch (error) {
+      setValidationMessage(`Erro ao validar: ${error}`);
+    } finally {
+      setIsValidating(false);
+    }
+  };
+
 
   if (!isOpen) return null;
 
@@ -37,8 +63,20 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
               className="w-full px-4 py-3 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary text-sm font-mono text-zinc-100"
             />
             <p className="text-xs text-zinc-500">
-              Sua chave é armazenada apenas localmente no navegador e usada para requisitar modelos.
+              Sua chave é armazenada no Convex e usada para requisitar modelos.
             </p>
+            <button
+              onClick={handleValidate}
+              disabled={isValidating || !key}
+              className="mt-2 px-3 py-1.5 text-xs font-medium text-primary bg-primary/10 hover:bg-primary/20 rounded transition-colors disabled:opacity-50"
+            >
+              {isValidating ? 'Validando...' : 'Validar Chave'}
+            </button>
+            {validationMessage && (
+              <p className={`text-xs mt-2 ${validationMessage.includes('válida') ? 'text-emerald-400' : 'text-red-400'}`}>
+                {validationMessage}
+              </p>
+            )}
           </div>
 
           <div className="p-4 bg-primary/10 border border-primary/20 rounded-lg">

@@ -1,16 +1,31 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Node, NodeType } from '../types';
-import { IconBrain, IconGripVertical, IconMessageSquare, IconChevronDown, IconCheck, IconTrash, IconCopy, IconFileImage, IconMonitor, IconCpu, IconGithub } from './Icons';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { Node, NodeType, Edge } from '../types';
+import { IconBrain, IconGripVertical, IconMessageSquare, IconChevronDown, IconCheck, IconTrash, IconCopy, IconMonitor, IconCpu, IconAlertCircle } from './Icons';
+import NodeCommentBadge from './NodeCommentBadge';
+import { Id } from '../convex/_generated/dataModel';
+import ConditionalNode from './nodes/ConditionalNode';
+import TransformNode from './nodes/TransformNode';
+import VariableNode from './nodes/VariableNode';
+import LoopNode from './nodes/LoopNode';
+import AggregateNode from './nodes/AggregateNode';
+import GitHubRepoNode from './nodes/GitHubRepoNode';
+import ErrorBoundary from './ErrorBoundary';
+import { getAvailableModels, isModelCompatible } from '../utils/modelFilter';
 
 interface NodeCardProps {
   node: Node;
   isSelected: boolean;
+  workflowId?: Id<'workflows'>;
+  nodes?: Node[];
+  edges?: Edge[];
   onMouseDown: (e: React.MouseEvent, nodeId: string) => void;
   onHandleMouseDown: (e: React.MouseEvent, nodeId: string, handleId: string, type: 'source' | 'target') => void;
   onHandleMouseUp: (e: React.MouseEvent, nodeId: string, handleId: string, type: 'source' | 'target') => void;
   onUpdateData: (nodeId: string, data: any) => void;
   onDelete: () => void;
   onDuplicate: () => void;
+  onOpenComments?: (nodeId: string) => void;
+  onOpenOutput?: (nodeId: string, result: any) => void;
 }
 
 // Sub-componente para o Select Customizado
@@ -79,7 +94,7 @@ const CustomSelect = ({
   );
 };
 
-const NodeCard: React.FC<NodeCardProps> = ({ node, isSelected, onMouseDown, onHandleMouseDown, onHandleMouseUp, onUpdateData, onDelete, onDuplicate }) => {
+const NodeCard: React.FC<NodeCardProps> = ({ node, isSelected, workflowId, nodes = [], edges = [], onMouseDown, onHandleMouseDown, onHandleMouseUp, onUpdateData, onDelete, onDuplicate, onOpenComments, onOpenOutput }) => {
   
   // Estado para controle de edição do título
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -91,6 +106,28 @@ const NodeCard: React.FC<NodeCardProps> = ({ node, isSelected, onMouseDown, onHa
       titleInputRef.current.focus();
     }
   }, [isEditingTitle]);
+
+  // Obter modelos disponíveis para nós LLM
+  const availableModels = useMemo(() => {
+    if (node.type === 'llm-model') {
+      return getAvailableModels();
+    }
+    return [];
+  }, [node.type]);
+
+  // Verificar se o modelo atual é compatível e ajustar se necessário
+  useEffect(() => {
+    if (node.type === 'llm-model' && availableModels.length > 0) {
+      const currentModel = node.data.model;
+      if (currentModel && !isModelCompatible(currentModel)) {
+        // Modelo atual não é compatível, resetar para o primeiro da lista
+        onUpdateData(node.id, { model: availableModels[0].value });
+      } else if (!currentModel) {
+        // Se não há modelo selecionado, usar o primeiro disponível
+        onUpdateData(node.id, { model: availableModels[0].value });
+      }
+    }
+  }, [node.type, node.id, node.data.model, availableModels, onUpdateData]);
 
   const handleTitleSubmit = () => {
     setIsEditingTitle(false);
@@ -120,78 +157,40 @@ const NodeCard: React.FC<NodeCardProps> = ({ node, isSelected, onMouseDown, onHa
       
       case 'github-repo':
         return (
-          <div className="p-3 pt-4 space-y-3">
-            <div>
-              <label className="text-xs font-semibold text-zinc-500 uppercase mb-1 block">Repositório</label>
-              <input
-                type="text"
-                placeholder="owner/repo"
-                value={node.data.githubRepo || ''}
-                onChange={(e) => onUpdateData(node.id, { githubRepo: e.target.value })}
-                className="w-full px-3 py-2 bg-black/20 border border-border rounded text-xs text-zinc-200 focus:outline-none focus:border-blue-500 transition-colors"
-                onMouseDown={(e) => e.stopPropagation()}
-              />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-zinc-500 uppercase mb-1 block">Branch</label>
-              <input
-                type="text"
-                placeholder="main"
-                value={node.data.githubBranch || 'main'}
-                onChange={(e) => onUpdateData(node.id, { githubBranch: e.target.value })}
-                className="w-full px-3 py-2 bg-black/20 border border-border rounded text-xs text-zinc-200 focus:outline-none focus:border-blue-500 transition-colors"
-                onMouseDown={(e) => e.stopPropagation()}
-              />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-zinc-500 uppercase mb-1 block">Modo</label>
-              <CustomSelect
-                value={node.data.githubMode || 'list'}
-                options={[
-                  { label: 'Listar Arquivos', value: 'list' },
-                  { label: 'Ler Arquivo', value: 'read' },
-                  { label: 'Buscar Código', value: 'search' }
-                ]}
-                onChange={(val) => onUpdateData(node.id, { githubMode: val })}
-              />
-            </div>
-            {(node.data.githubMode === 'read' || node.data.githubMode === 'search') && (
-              <div>
-                <label className="text-xs font-semibold text-zinc-500 uppercase mb-1 block">
-                  {node.data.githubMode === 'read' ? 'Caminho do Arquivo' : 'Query de Busca'}
-                </label>
-                <input
-                  type="text"
-                  placeholder={node.data.githubMode === 'read' ? 'src/index.ts' : 'function name'}
-                  value={node.data.githubMode === 'read' ? (node.data.githubPath || '') : (node.data.githubSearchQuery || '')}
-                  onChange={(e) => onUpdateData(node.id, { 
-                    [node.data.githubMode === 'read' ? 'githubPath' : 'githubSearchQuery']: e.target.value 
-                  })}
-                  className="w-full px-3 py-2 bg-black/20 border border-border rounded text-xs text-zinc-200 focus:outline-none focus:border-blue-500 transition-colors"
-                  onMouseDown={(e) => e.stopPropagation()}
-                />
-              </div>
-            )}
+          <ErrorBoundary
+            fallback={
+              <div className="p-3 pt-4 space-y-3">
+                <div className="flex items-center gap-2 text-xs text-amber-500 bg-amber-500/10 border border-amber-500/30 rounded p-2">
+                  <IconAlertCircle className="w-4 h-4" />
+                  <span>Carregando integração GitHub... Aguarde alguns segundos.</span>
+                </div>
           </div>
+            }
+          >
+            <GitHubRepoNode node={node} onUpdateData={onUpdateData} />
+          </ErrorBoundary>
         );
 
       case 'llm-model':
-        const modelOptions = [
-          { label: 'GPT-4o (OpenAI)', value: 'openai/gpt-4o' },
-          { label: 'Claude 3 Opus (Anthropic)', value: 'anthropic/claude-3-opus' },
-          { label: 'Llama 3 70B (Meta)', value: 'meta-llama/llama-3-70b' },
-          { label: 'Gemini Pro 1.5 (Google)', value: 'google/gemini-pro' }
-        ];
+        const modelOptions = availableModels.length > 0 ? availableModels : getAvailableModels();
+        const currentModel = node.data.model || modelOptions[0]?.value || '';
 
         return (
           <div className="p-3 pt-4 space-y-3">
             <div>
-              <label className="text-xs font-semibold text-zinc-500 uppercase mb-1 block">Modelo</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs font-semibold text-zinc-500 uppercase">Modelo</label>
+              </div>
               <CustomSelect 
-                value={node.data.model || 'openai/gpt-3.5-turbo'}
+                value={currentModel}
                 options={modelOptions}
                 onChange={(val) => onUpdateData(node.id, { model: val })}
               />
+              {modelOptions.length > 0 && (
+                <p className="text-[9px] text-zinc-600 mt-1">
+                  {modelOptions.length} modelo{modelOptions.length !== 1 ? 's' : ''} disponível{modelOptions.length !== 1 ? 'eis' : ''} para texto
+                </p>
+              )}
             </div>
             <div className="flex items-center gap-2 bg-zinc-900/50 p-2 rounded border border-border/50">
                <div className={`w-2 h-2 rounded-full ${node.data.isProcessing ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`}></div>
@@ -203,13 +202,45 @@ const NodeCard: React.FC<NodeCardProps> = ({ node, isSelected, onMouseDown, onHa
         );
       case 'output-display':
         return (
-          <div className="p-3 pt-4">
-            <label className="text-xs font-semibold text-zinc-500 uppercase mb-1 block">Resultado</label>
-            <div className="w-full bg-black/40 border border-border rounded p-2 text-xs text-zinc-300 min-h-[80px] max-h-[150px] overflow-y-auto font-mono whitespace-pre-wrap custom-scrollbar">
-              {node.data.value || '// Texto, Imagem ou Vídeo gerado aparecerá aqui...'}
+          <div className="p-3 pt-4 space-y-3">
+            <div>
+              <label className="text-xs font-semibold text-zinc-500 uppercase mb-1 block">Resultado</label>
+              <div
+                data-output-result
+                data-scrollable
+                className="w-full bg-black/40 border border-border rounded p-2 text-xs text-zinc-300 min-h-[80px] max-h-[150px] overflow-y-auto font-mono whitespace-pre-wrap custom-scrollbar cursor-pointer hover:bg-black/60 transition-colors"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (node.data.value && onOpenOutput) {
+                    onOpenOutput(node.id, node.data.value);
+                  }
+                }}
+                title={node.data.value ? "Clique para ver em tela cheia" : undefined}
+              >
+                {node.data.value || '// Texto gerado aparecerá aqui...'}
+              </div>
+              {node.data.value && (
+                <p className="text-[9px] text-zinc-500 mt-1">Clique no resultado para ver em tela cheia</p>
+              )}
             </div>
           </div>
         );
+
+      case 'conditional':
+        return <ConditionalNode node={node} onUpdateData={onUpdateData} />;
+
+      case 'transform':
+        return <TransformNode node={node} onUpdateData={onUpdateData} />;
+
+      case 'variable':
+        return <VariableNode node={node} onUpdateData={onUpdateData} />;
+
+      case 'loop':
+        return <LoopNode node={node} onUpdateData={onUpdateData} />;
+
+      case 'aggregate':
+        return <AggregateNode node={node} onUpdateData={onUpdateData} />;
+
       default:
         return null;
     }
@@ -228,9 +259,14 @@ const NodeCard: React.FC<NodeCardProps> = ({ node, isSelected, onMouseDown, onHa
   const getIcon = () => {
     switch (node.type) {
       case 'input-text': return <IconMessageSquare className="w-4 h-4" />;
-      case 'github-repo': return <IconGithub className="w-4 h-4" />;
+      case 'github-repo': return <IconCpu className="w-4 h-4" />;
       case 'llm-model': return <IconCpu className="w-4 h-4" />;
       case 'output-display': return <IconMonitor className="w-4 h-4" />;
+      case 'conditional': return <IconChevronDown className="w-4 h-4" />;
+      case 'transform': return <IconBrain className="w-4 h-4" />;
+      case 'variable': return <IconMessageSquare className="w-4 h-4" />;
+      case 'loop': return <IconCpu className="w-4 h-4" />;
+      case 'aggregate': return <IconBrain className="w-4 h-4" />;
       default: return <IconBrain className="w-4 h-4" />;
     }
   };
@@ -240,24 +276,31 @@ const NodeCard: React.FC<NodeCardProps> = ({ node, isSelected, onMouseDown, onHa
 
   return (
     <div
-      className={`absolute w-64 bg-surface/90 backdrop-blur-md border rounded-xl shadow-xl transition-shadow group z-10 select-none
+      data-node-card
+      className={`absolute w-64 bg-surface/90 backdrop-blur-md border rounded-xl shadow-xl transition-shadow group z-20 select-none node-card
         ${isSelected ? 'border-primary shadow-primary/20 ring-1 ring-primary/50' : 'border-border hover:border-zinc-600'}
       `}
       style={{ transform: `translate(${node.position.x}px, ${node.position.y}px)` }}
+      onClick={(e) => e.stopPropagation()}
     >
       
       {/* AÇÕES RÁPIDAS */}
       <div 
-        className={`absolute left-0 right-0 flex justify-center gap-2 pointer-events-none transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]
-          ${isSelected ? '-top-12 opacity-100 scale-100' : 'top-0 opacity-0 scale-0'}
+        className={`absolute left-0 right-0 flex justify-center gap-2 transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] z-30
+          ${isSelected ? '-top-12 opacity-100 scale-100 pointer-events-auto' : 'top-0 opacity-0 scale-0 pointer-events-none'}
         `}
       >
         <button
           onClick={(e) => {
             e.stopPropagation();
+            e.preventDefault();
             onDelete();
           }}
-          className="pointer-events-auto bg-red-500 hover:bg-red-600 text-white p-2 rounded-full shadow-lg shadow-red-500/30 flex items-center justify-center transform hover:scale-110 active:scale-95 transition-transform border-2 border-surface"
+          onMouseDown={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+          }}
+          className="bg-red-500 hover:bg-red-600 text-white p-2 rounded-full shadow-lg shadow-red-500/30 flex items-center justify-center transform hover:scale-110 active:scale-95 transition-transform border-2 border-surface cursor-pointer"
           title="Deletar Nó"
         >
           <IconTrash className="w-4 h-4" />
@@ -266,21 +309,26 @@ const NodeCard: React.FC<NodeCardProps> = ({ node, isSelected, onMouseDown, onHa
         <button
           onClick={(e) => {
             e.stopPropagation();
+            e.preventDefault();
             onDuplicate();
           }}
-          className="pointer-events-auto bg-blue-500 hover:bg-blue-600 text-white p-2 rounded-full shadow-lg shadow-blue-500/30 flex items-center justify-center transform hover:scale-110 active:scale-95 transition-transform border-2 border-surface"
+          onMouseDown={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+          }}
+          className="bg-blue-500 hover:bg-blue-600 text-white p-2 rounded-full shadow-lg shadow-blue-500/30 flex items-center justify-center transform hover:scale-110 active:scale-95 transition-transform border-2 border-surface cursor-pointer"
           title="Duplicar Nó"
         >
           <IconCopy className="w-4 h-4" />
         </button>
         
-        <div className={`absolute bottom-[-4px] w-2 h-2 bg-surface border-t border-l border-surface rotate-45 transform transition-opacity delay-75 duration-300 opacity-0`}></div>
+        <div className={`absolute bottom-[-4px] w-2 h-2 bg-surface border-t border-l border-surface rotate-45 transform transition-opacity delay-75 duration-300 opacity-0 pointer-events-none`}></div>
       </div>
 
 
       {/* Header */}
       <div
-        className={`flex items-center justify-between p-3 border-b ${getHeaderColor()} cursor-grab active:cursor-grabbing rounded-t-xl`}
+        className={`flex items-center justify-between p-3 border-b ${getHeaderColor()} cursor-grab active:cursor-grabbing rounded-t-xl relative`}
         onMouseDown={(e) => onMouseDown(e, node.id)}
         onDoubleClick={(e) => e.stopPropagation()}
       >
@@ -312,7 +360,25 @@ const NodeCard: React.FC<NodeCardProps> = ({ node, isSelected, onMouseDown, onHa
           )}
          
         </div>
-        <IconGripVertical className="w-4 h-4 opacity-50 flex-shrink-0" />
+        <div className="flex items-center gap-1">
+          {onOpenComments && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenComments(node.id);
+              }}
+              onMouseDown={(e) => {
+                e.stopPropagation();
+              }}
+              className="relative p-1 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded transition-colors"
+              title="Comentários"
+            >
+              <IconMessageSquare className="w-4 h-4" />
+              {workflowId && <NodeCommentBadge nodeId={node.id} />}
+            </button>
+          )}
+          <IconGripVertical className="w-4 h-4 opacity-50 flex-shrink-0" />
+        </div>
       </div>
 
       {/* Content */}
