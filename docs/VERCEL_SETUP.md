@@ -2,36 +2,30 @@
 
 ## Variáveis de Ambiente Necessárias
 
-Para que o build funcione corretamente no Vercel, você precisa configurar as seguintes variáveis de ambiente:
+Para que o build funcione corretamente no Vercel, você precisa configurar um **Deploy Key** do Convex. O `convex codegen` precisa de autenticação para gerar os arquivos `_generated` durante o build.
 
-### 1. Variáveis do Convex
-
-O Convex precisa gerar os arquivos `_generated` durante o build. Para isso, você precisa configurar:
+### 1. Obter Deploy Key do Convex
 
 1. Acesse o [Dashboard do Convex](https://dashboard.convex.dev)
 2. Vá para o seu projeto
-3. Copie o **Deployment URL** ou **Deployment Name**
-4. No Vercel:
-   - Vá para **Settings** → **Environment Variables**
-   - Adicione a variável `CONVEX_DEPLOYMENT` com o valor do seu deployment
-   - Ou configure o arquivo `.env.production` no Vercel
+3. Clique em **Settings** → **Deploy Keys**
+4. Clique em **Create Deploy Key**
+5. Copie o **Deploy Key** gerado (ele só será mostrado uma vez!)
 
-### 2. Configuração no Vercel
+### 2. Configurar no Vercel
 
 1. Acesse o [Dashboard do Vercel](https://vercel.com/dashboard)
 2. Vá para o seu projeto
 3. Clique em **Settings** → **Environment Variables**
-4. Adicione as seguintes variáveis:
+4. Adicione a seguinte variável:
 
 ```
-CONVEX_DEPLOYMENT=wry-avocet-85
+CONVEX_DEPLOY_KEY=<cole-o-deploy-key-aqui>
 ```
 
-Ou se você preferir usar o arquivo de configuração do Convex:
-
-```
-CONVEX_DEPLOYMENT=<seu-deployment-name>
-```
+**Importante:**
+- Configure para todos os ambientes: **Production**, **Preview** e **Development**
+- O Deploy Key é sensível - não compartilhe publicamente
 
 ### 3. Build Command
 
@@ -49,14 +43,28 @@ Após configurar as variáveis de ambiente, faça um novo deploy. O build deve f
 
 ## Troubleshooting
 
+### Erro: "401 Unauthorized: MissingAccessToken"
+
+Isso significa que o `CONVEX_DEPLOY_KEY` não está configurado ou está incorreto. Verifique:
+
+1. Se a variável `CONVEX_DEPLOY_KEY` está configurada no Vercel
+2. Se o Deploy Key está correto (copie novamente do Convex Dashboard se necessário)
+3. Se a variável está configurada para todos os ambientes (Production, Preview, Development)
+
 ### Erro: "Could not resolve ./convex/_generated/api"
 
 Isso significa que o `convex codegen` não foi executado ou falhou. Verifique:
 
-1. Se a variável `CONVEX_DEPLOYMENT` está configurada no Vercel
-2. Se você tem acesso ao deployment do Convex
-3. Os logs do build no Vercel para ver se há erros no `convex codegen`
+1. Se a variável `CONVEX_DEPLOY_KEY` está configurada corretamente
+2. Os logs do build no Vercel para ver se há erros no `convex codegen`
+3. Se o Deploy Key tem permissões para acessar o deployment
 
-### Erro: "Convex deployment not found"
+### Como gerar um novo Deploy Key
 
-Verifique se o deployment name está correto e se você tem permissões para acessá-lo.
+Se você perdeu o Deploy Key ou precisa gerar um novo:
+
+1. No Convex Dashboard, vá para **Settings** → **Deploy Keys**
+2. Revogue o Deploy Key antigo (se necessário)
+3. Clique em **Create Deploy Key**
+4. Copie o novo Deploy Key
+5. Atualize a variável `CONVEX_DEPLOY_KEY` no Vercel
