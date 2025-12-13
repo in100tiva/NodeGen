@@ -1,0 +1,26 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: #09090b;
+  --color-surface: #18181b;
+  --color-border: #27272a;
+  --color-primary: #6366f1;
+  --color-accent: #ec4899;
+  --font-sans: 'Inter', sans-serif;
+  --font-mono: 'Fira Code', monospace;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--color-background);
+  color: #e4e4e7;
+  overflow: hidden;
+}
+
+.node-handle {
+  transition: transform 0.2s;
+}
+
+.node-handle:hover {
+  transform: scale(1.2);
+}
