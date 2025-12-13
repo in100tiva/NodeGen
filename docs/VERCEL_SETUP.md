@@ -2,9 +2,39 @@
 
 ## Variáveis de Ambiente Necessárias
 
-Para que o build funcione corretamente no Vercel, você precisa configurar um **Deploy Key** do Convex. O `convex codegen` precisa de autenticação para gerar os arquivos `_generated` durante o build.
+Para que a aplicação funcione corretamente no Vercel, você precisa configurar **duas variáveis de ambiente**:
 
-### 1. Obter Deploy Key do Convex
+1. **CONVEX_DEPLOY_KEY** - Para o build
+2. **VITE_CONVEX_URL** - Para a aplicação funcionar
+
+### 1. VITE_CONVEX_URL (Runtime - OBRIGATÓRIO)
+
+Esta variável permite que a aplicação se conecte ao backend Convex.
+
+#### Como obter a URL:
+
+**Opção A - Via CLI:**
+```bash
+npx convex dev --once
+```
+Procure por: `Deployment URL: https://seu-deployment.convex.cloud`
+
+**Opção B - Via Dashboard:**
+1. Acesse [dashboard.convex.dev](https://dashboard.convex.dev)
+2. Selecione seu projeto
+3. Vá para **Settings** → **URL & Deploy Key**
+4. Copie a **Deployment URL**
+
+#### Configurar no Vercel:
+```
+Nome: VITE_CONVEX_URL
+Valor: https://seu-deployment.convex.cloud
+Ambientes: Production, Preview, Development
+```
+
+⚠️ **IMPORTANTE**: Sem essa variável, a aplicação fica com tela preta e erro no console!
+
+### 2. CONVEX_DEPLOY_KEY (Build Time)
 
 1. Acesse o [Dashboard do Convex](https://dashboard.convex.dev)
 2. Vá para o seu projeto
@@ -12,7 +42,7 @@ Para que o build funcione corretamente no Vercel, você precisa configurar um **
 4. Clique em **Create Deploy Key**
 5. Copie o **Deploy Key** gerado (ele só será mostrado uma vez!)
 
-### 2. Configurar no Vercel
+#### Configurar no Vercel:
 
 1. Acesse o [Dashboard do Vercel](https://vercel.com/dashboard)
 2. Vá para o seu projeto
@@ -20,11 +50,13 @@ Para que o build funcione corretamente no Vercel, você precisa configurar um **
 4. Adicione a seguinte variável:
 
 ```
-CONVEX_DEPLOY_KEY=<cole-o-deploy-key-aqui>
+Nome: CONVEX_DEPLOY_KEY
+Valor: <cole-o-deploy-key-aqui>
+Ambientes: Production, Preview, Development
 ```
 
 **Importante:**
-- Configure para todos os ambientes: **Production**, **Preview** e **Development**
+- Configure para todos os ambientes
 - O Deploy Key é sensível - não compartilhe publicamente
 
 ### 3. Build Command
@@ -41,7 +73,22 @@ Isso garante que os arquivos do Convex sejam gerados antes do build do Vite.
 
 Após configurar as variáveis de ambiente, faça um novo deploy. O build deve funcionar corretamente.
 
+## Resumo - Checklist de Variáveis
+
+- [ ] `VITE_CONVEX_URL` - URL do deployment (ex: `https://xxx.convex.cloud`)
+- [ ] `CONVEX_DEPLOY_KEY` - Deploy Key do Convex Dashboard
+
 ## Troubleshooting
+
+### Erro: "Could not find Convex client!" (Tela Preta)
+
+**Causa**: `VITE_CONVEX_URL` não está configurada
+
+**Solução**:
+1. Configure a variável `VITE_CONVEX_URL` no Vercel (veja seção 1 acima)
+2. Faça um **novo deploy** (não apenas invalidar cache)
+3. Aguarde o deploy completar
+4. Recarregue a página (Ctrl+F5)
 
 ### Erro: "401 Unauthorized: MissingAccessToken"
 
