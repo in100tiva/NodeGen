@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import NodeCanvas from './components/NodeCanvas';
 import SettingsModal from './components/SettingsModal';
 import { Node, Edge, AppSettings, NodeType } from './types';
-import { IconSettings, IconPlay, IconMessageSquare, IconFileImage, IconCpu, IconMonitor } from './components/Icons';
+import { IconSettings, IconPlay, IconMessageSquare, IconGithub, IconCpu, IconMonitor } from './components/Icons';
 
 const INITIAL_NODES: Node[] = [
   {
@@ -48,7 +48,7 @@ export default function App() {
     
     let label = 'Novo Nó';
     if (type === 'input-text') label = 'Prompt de Texto';
-    if (type === 'input-file') label = 'Upload Arquivo';
+    if (type === 'github-repo') label = 'GitHub Repo';
     if (type === 'llm-model') label = 'Processador LLM';
     if (type === 'output-display') label = 'Resultado';
 
@@ -57,7 +57,7 @@ export default function App() {
       type,
       position: { x: 100 + Math.random() * 50, y: 100 + Math.random() * 50 },
       data: { label },
-      inputs: type === 'input-text' || type === 'input-file' ? [] : ['input'],
+      inputs: type === 'input-text' || type === 'github-repo' ? [] : ['input'],
       outputs: type === 'output-display' ? [] : ['output']
     };
     setNodes([...nodes, newNode]);
@@ -174,16 +174,16 @@ export default function App() {
             </span>
           </div>
 
-          {/* Tool 2: Upload de Arquivo (Blue) */}
+          {/* Tool 2: GitHub Repo (Blue) */}
           <div className="group relative flex items-center justify-center">
             <button 
-              onClick={() => addNode('input-file')}
+              onClick={() => addNode('github-repo')}
               className="w-10 h-10 rounded-xl bg-zinc-800 hover:bg-blue-500/20 hover:text-blue-400 border border-transparent hover:border-blue-500/50 flex items-center justify-center transition-all duration-300 shadow-md"
             >
-              <IconFileImage className="w-5 h-5" />
+              <IconGithub className="w-5 h-5" />
             </button>
             <span className="absolute left-14 bg-zinc-900 text-xs text-zinc-200 px-2 py-1.5 rounded-md border border-zinc-700 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none shadow-lg z-50">
-              Upload Arquivo
+              GitHub Repo
             </span>
           </div>
 

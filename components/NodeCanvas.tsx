@@ -23,6 +23,12 @@ const NodeCanvas: React.FC<NodeCanvasProps> = ({ nodes, edges, setNodes, setEdge
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
   
+  // Estados de Zoom e Pan
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState<Position>({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const [panStart, setPanStart] = useState<Position>({ x: 0, y: 0 });
+  
   const canvasRef = useRef<HTMLDivElement>(null);
   const canvasBoundsRef = useRef<{ left: number, top: number } | null>(null);
 
@@ -45,9 +51,12 @@ const NodeCanvas: React.FC<NodeCanvasProps> = ({ nodes, edges, setNodes, setEdge
       if (node) {
         const mouseX = e.clientX - rect.left;
         const mouseY = e.clientY - rect.top;
+        // Ajustar coordenadas considerando zoom e pan
+        const adjustedX = (mouseX - pan.x) / zoom;
+        const adjustedY = (mouseY - pan.y) / zoom;
         setDragOffset({
-          x: mouseX - node.position.x,
-          y: mouseY - node.position.y,
+          x: adjustedX - node.position.x,
+          y: adjustedY - node.position.y,
         });
       }
     }
@@ -123,8 +132,6 @@ const NodeCanvas: React.FC<NodeCanvasProps> = ({ nodes, edges, setNodes, setEdge
   // --- Movimento Global ---
 
   const handleMouseMove = (e: React.MouseEvent) => {
-    if (!draggingNodeId && !connecting) return;
-
     let left = 0;
     let top = 0;
 
@@ -140,15 +147,30 @@ const NodeCanvas: React.FC<NodeCanvasProps> = ({ nodes, edges, setNodes, setEdge
     const x = e.clientX - left;
     const y = e.clientY - top;
     
+    // Pan do canvas
+    if (isPanning) {
+      const deltaX = x - panStart.x;
+      const deltaY = y - panStart.y;
+      setPan(prev => ({ x: prev.x + deltaX, y: prev.y + deltaY }));
+      setPanStart({ x, y });
+      return;
+    }
+    
+    if (!draggingNodeId && !connecting) return;
+    
+    // Ajustar coordenadas considerando zoom e pan
+    const adjustedX = (x - pan.x) / zoom;
+    const adjustedY = (y - pan.y) / zoom;
+    
     if (connecting) {
-      setMousePos({ x, y });
+      setMousePos({ x: adjustedX, y: adjustedY });
     }
 
     if (draggingNodeId) {
       setNodes((prev) =>
         prev.map((n) =>
           n.id === draggingNodeId
-            ? { ...n, position: { x: x - dragOffset.x, y: y - dragOffset.y } }
+            ? { ...n, position: { x: adjustedX - dragOffset.x, y: adjustedY - dragOffset.y } }
             : n
         )
       );
@@ -158,12 +180,40 @@ const NodeCanvas: React.FC<NodeCanvasProps> = ({ nodes, edges, setNodes, setEdge
   const handleMouseUp = (e: React.MouseEvent) => {
     setDraggingNodeId(null);
     setConnecting(null);
+    setIsPanning(false);
     canvasBoundsRef.current = null;
   };
 
-  const handleCanvasMouseDown = () => {
+  const handleCanvasMouseDown = (e: React.MouseEvent) => {
+    // Iniciar pan com botão do meio ou clique direito
+    if (e.button === 1 || e.button === 2) {
+      setIsPanning(true);
+      setPanStart({ x: e.clientX, y: e.clientY });
+      e.preventDefault();
+    }
+    
     setSelectedNodeId(null);
     setSelectedEdgeId(null);
+  };
+
+  const handleWheel = (e: React.WheelEvent) => {
+    e.preventDefault();
+    const delta = e.deltaY * -0.001;
+    const newZoom = Math.min(Math.max(0.5, zoom + delta), 2);
+    setZoom(newZoom);
+  };
+
+  const handleZoomIn = () => {
+    setZoom(prev => Math.min(prev + 0.1, 2));
+  };
+
+  const handleZoomOut = () => {
+    setZoom(prev => Math.max(prev - 0.1, 0.5));
+  };
+
+  const handleResetZoom = () => {
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
   };
 
   // --- Geometria ---
@@ -175,16 +225,29 @@ const NodeCanvas: React.FC<NodeCanvasProps> = ({ nodes, edges, setNodes, setEdge
     const list = type === 'source' ? node.outputs : node.inputs;
     const index = list.indexOf(handleId);
     
-    if (index === -1) return { x: node.position.x, y: node.position.y };
+    if (index === -1) {
+      // Retornar posição base do nó (sem transformação para uso interno)
+      return { x: node.position.x, y: node.position.y };
+    }
 
-    const y = node.position.y + HANDLE_OFFSET_TOP + (index * HANDLE_SPACING) + (HANDLE_WIDTH_CONTAINER / 2);
+    const baseY = node.position.y + HANDLE_OFFSET_TOP + (index * HANDLE_SPACING) + (HANDLE_WIDTH_CONTAINER / 2);
     const HANDLE_CENTER_OFFSET = HANDLE_WIDTH_CONTAINER / 2;
 
-    const x = type === 'source' 
+    const baseX = type === 'source' 
       ? node.position.x + NODE_WIDTH + HANDLE_CENTER_OFFSET
       : node.position.x - HANDLE_CENTER_OFFSET;
 
-    return { x, y };
+    // Retornar posição base (sem transformação) para cálculos internos
+    return { x: baseX, y: baseY };
+  };
+
+  const getHandlePositionTransformed = (nodeId: string, handleId: string, type: 'source' | 'target'): Position => {
+    const basePos = getHandlePosition(nodeId, handleId, type);
+    // Aplicar transformação de zoom e pan para renderização
+    return { 
+      x: (basePos.x * zoom) + pan.x, 
+      y: (basePos.y * zoom) + pan.y 
+    };
   };
 
   const getPathInfo = (start: Position, end: Position) => {
@@ -214,7 +277,36 @@ const NodeCanvas: React.FC<NodeCanvasProps> = ({ nodes, edges, setNodes, setEdge
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseDown={handleCanvasMouseDown}
+      onWheel={handleWheel}
+      style={{ cursor: isPanning ? 'grabbing' : 'default' }}
     >
+      {/* Controles de Zoom */}
+      <div className="absolute bottom-4 left-4 z-50 flex flex-col gap-2 bg-surface/90 backdrop-blur border border-border rounded-lg p-2 shadow-xl">
+        <button
+          onClick={handleZoomIn}
+          className="w-8 h-8 flex items-center justify-center bg-zinc-800 hover:bg-primary/20 hover:text-primary border border-border hover:border-primary/50 rounded transition-all"
+          title="Zoom In (+)"
+        >
+          <span className="text-sm font-bold">+</span>
+        </button>
+        <button
+          onClick={handleZoomOut}
+          className="w-8 h-8 flex items-center justify-center bg-zinc-800 hover:bg-primary/20 hover:text-primary border border-border hover:border-primary/50 rounded transition-all"
+          title="Zoom Out (-)"
+        >
+          <span className="text-sm font-bold">−</span>
+        </button>
+        <button
+          onClick={handleResetZoom}
+          className="w-8 h-8 flex items-center justify-center bg-zinc-800 hover:bg-primary/20 hover:text-primary border border-border hover:border-primary/50 rounded transition-all text-xs"
+          title="Reset Zoom (100%)"
+        >
+          100%
+        </button>
+        <div className="text-[10px] text-zinc-500 text-center pt-1 border-t border-border">
+          {Math.round(zoom * 100)}%
+        </div>
+      </div>
       <svg className="absolute inset-0 w-full h-full pointer-events-none z-0 overflow-visible">
         <defs>
           <linearGradient id="gradient-line" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -224,8 +316,8 @@ const NodeCanvas: React.FC<NodeCanvasProps> = ({ nodes, edges, setNodes, setEdge
         </defs>
         
         {edges.map(edge => {
-          const start = getHandlePosition(edge.source, edge.sourceHandle, 'source');
-          const end = getHandlePosition(edge.target, edge.targetHandle, 'target');
+          const start = getHandlePositionTransformed(edge.source, edge.sourceHandle, 'source');
+          const end = getHandlePositionTransformed(edge.target, edge.targetHandle, 'target');
           const { d, midX, midY } = getPathInfo(start, end);
           
           // Lógica de visualização:
@@ -301,7 +393,9 @@ const NodeCanvas: React.FC<NodeCanvasProps> = ({ nodes, edges, setNodes, setEdge
         })}
 
         {connecting && (() => {
-           const { d } = getPathInfo(connecting.pos, mousePos);
+           const startPos = getHandlePositionTransformed(connecting.nodeId, connecting.handleId, connecting.type);
+           const endPos = { x: (mousePos.x * zoom) + pan.x, y: (mousePos.y * zoom) + pan.y };
+           const { d } = getPathInfo(startPos, endPos);
            return (
               <path 
                 d={d}
@@ -315,7 +409,13 @@ const NodeCanvas: React.FC<NodeCanvasProps> = ({ nodes, edges, setNodes, setEdge
         })()}
       </svg>
       
-      <div className="relative z-10 w-full h-full pointer-events-none">
+      <div 
+        className="relative z-10 w-full h-full pointer-events-none"
+        style={{
+          transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+          transformOrigin: 'top left'
+        }}
+      >
         {nodes.map(node => (
           <div key={node.id} className="pointer-events-auto">
             <NodeCard

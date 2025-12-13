@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Node, NodeType } from '../types';
-import { IconBrain, IconGripVertical, IconMessageSquare, IconChevronDown, IconCheck, IconTrash, IconCopy, IconFileImage, IconMonitor, IconCpu } from './Icons';
+import { IconBrain, IconGripVertical, IconMessageSquare, IconChevronDown, IconCheck, IconTrash, IconCopy, IconFileImage, IconMonitor, IconCpu, IconGithub } from './Icons';
 
 interface NodeCardProps {
   node: Node;
@@ -118,16 +118,60 @@ const NodeCard: React.FC<NodeCardProps> = ({ node, isSelected, onMouseDown, onHa
           </div>
         );
       
-      case 'input-file':
+      case 'github-repo':
         return (
-          <div className="p-3 pt-4">
-            <label className="text-xs font-semibold text-zinc-500 uppercase mb-1 block">Upload de Arquivo</label>
-            <div className="w-full h-24 border-2 border-dashed border-zinc-700 hover:border-blue-500 rounded-lg flex flex-col items-center justify-center gap-2 cursor-pointer transition-colors group/upload bg-black/20">
-               <IconFileImage className="w-6 h-6 text-zinc-600 group-hover/upload:text-blue-500 transition-colors" />
-               <span className="text-[10px] text-zinc-500 group-hover/upload:text-blue-400 font-medium">
-                 {node.data.fileName || 'Arraste ou clique'}
-               </span>
+          <div className="p-3 pt-4 space-y-3">
+            <div>
+              <label className="text-xs font-semibold text-zinc-500 uppercase mb-1 block">Repositório</label>
+              <input
+                type="text"
+                placeholder="owner/repo"
+                value={node.data.githubRepo || ''}
+                onChange={(e) => onUpdateData(node.id, { githubRepo: e.target.value })}
+                className="w-full px-3 py-2 bg-black/20 border border-border rounded text-xs text-zinc-200 focus:outline-none focus:border-blue-500 transition-colors"
+                onMouseDown={(e) => e.stopPropagation()}
+              />
             </div>
+            <div>
+              <label className="text-xs font-semibold text-zinc-500 uppercase mb-1 block">Branch</label>
+              <input
+                type="text"
+                placeholder="main"
+                value={node.data.githubBranch || 'main'}
+                onChange={(e) => onUpdateData(node.id, { githubBranch: e.target.value })}
+                className="w-full px-3 py-2 bg-black/20 border border-border rounded text-xs text-zinc-200 focus:outline-none focus:border-blue-500 transition-colors"
+                onMouseDown={(e) => e.stopPropagation()}
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-zinc-500 uppercase mb-1 block">Modo</label>
+              <CustomSelect
+                value={node.data.githubMode || 'list'}
+                options={[
+                  { label: 'Listar Arquivos', value: 'list' },
+                  { label: 'Ler Arquivo', value: 'read' },
+                  { label: 'Buscar Código', value: 'search' }
+                ]}
+                onChange={(val) => onUpdateData(node.id, { githubMode: val })}
+              />
+            </div>
+            {(node.data.githubMode === 'read' || node.data.githubMode === 'search') && (
+              <div>
+                <label className="text-xs font-semibold text-zinc-500 uppercase mb-1 block">
+                  {node.data.githubMode === 'read' ? 'Caminho do Arquivo' : 'Query de Busca'}
+                </label>
+                <input
+                  type="text"
+                  placeholder={node.data.githubMode === 'read' ? 'src/index.ts' : 'function name'}
+                  value={node.data.githubMode === 'read' ? (node.data.githubPath || '') : (node.data.githubSearchQuery || '')}
+                  onChange={(e) => onUpdateData(node.id, { 
+                    [node.data.githubMode === 'read' ? 'githubPath' : 'githubSearchQuery']: e.target.value 
+                  })}
+                  className="w-full px-3 py-2 bg-black/20 border border-border rounded text-xs text-zinc-200 focus:outline-none focus:border-blue-500 transition-colors"
+                  onMouseDown={(e) => e.stopPropagation()}
+                />
+              </div>
+            )}
           </div>
         );
 
@@ -174,7 +218,7 @@ const NodeCard: React.FC<NodeCardProps> = ({ node, isSelected, onMouseDown, onHa
   const getHeaderColor = () => {
     switch (node.type) {
       case 'input-text': return 'border-emerald-500/50 text-emerald-400';
-      case 'input-file': return 'border-blue-500/50 text-blue-400';
+      case 'github-repo': return 'border-blue-500/50 text-blue-400';
       case 'llm-model': return 'border-primary/50 text-primary';
       case 'output-display': return 'border-accent/50 text-accent';
       default: return 'border-zinc-700 text-zinc-400';
@@ -184,7 +228,7 @@ const NodeCard: React.FC<NodeCardProps> = ({ node, isSelected, onMouseDown, onHa
   const getIcon = () => {
     switch (node.type) {
       case 'input-text': return <IconMessageSquare className="w-4 h-4" />;
-      case 'input-file': return <IconFileImage className="w-4 h-4" />;
+      case 'github-repo': return <IconGithub className="w-4 h-4" />;
       case 'llm-model': return <IconCpu className="w-4 h-4" />;
       case 'output-display': return <IconMonitor className="w-4 h-4" />;
       default: return <IconBrain className="w-4 h-4" />;

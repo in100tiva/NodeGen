@@ -3,14 +3,19 @@ export interface Position {
   y: number;
 }
 
-export type NodeType = 'input-text' | 'input-file' | 'llm-model' | 'output-display';
+export type NodeType = 'input-text' | 'github-repo' | 'llm-model' | 'output-display';
 
 export interface NodeData {
   label: string;
   value?: string;
   model?: string;
   isProcessing?: boolean;
-  fileName?: string; // Para o card de arquivo
+  // GitHub Repo fields
+  githubRepo?: string;
+  githubBranch?: string;
+  githubPath?: string;
+  githubMode?: 'list' | 'read' | 'search';
+  githubSearchQuery?: string;
 }
 
 export interface Node {
