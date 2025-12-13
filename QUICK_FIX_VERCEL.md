@@ -5,18 +5,18 @@ A aplicação está com tela preta e erro: `Could not find Convex client!`
 
 ## Solução em 3 Passos
 
-### 1️⃣ Obter a URL do Convex
+### 1️⃣ Usar a URL Correta
 
-Execute no terminal:
-```bash
-npx convex dev --once
+**A URL correta do seu projeto é:**
+```
+https://cautious-buzzard-249.convex.cloud
 ```
 
-Ou acesse: [dashboard.convex.dev](https://dashboard.convex.dev) → Seu Projeto → Settings → URL
+⚠️ **ATENÇÃO**: 
+- ✅ Use `.convex.cloud` (URL do deployment)
+- ❌ NÃO use `.convex.site` (URL de HTTP Actions)
 
-Copie a URL que termina com `.convex.cloud`
-
-Exemplo: `https://cautious-buzzard-249.convex.cloud`
+Baseado no seu erro, você configurou `.convex.site` mas precisa usar `.convex.cloud`!
 
 ### 2️⃣ Configurar no Vercel
 
@@ -27,8 +27,9 @@ Exemplo: `https://cautious-buzzard-249.convex.cloud`
 5. Adicione:
    ```
    Nome: VITE_CONVEX_URL
-   Valor: https://seu-deployment.convex.cloud
+   Valor: https://cautious-buzzard-249.convex.cloud
    ```
+   ⚠️ **Importante**: Use `.convex.cloud` (não `.convex.site`)!
 6. Marque: **Production**, **Preview** e **Development**
 7. Clique em **Save**
 
