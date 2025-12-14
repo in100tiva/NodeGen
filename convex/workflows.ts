@@ -232,18 +232,65 @@ export const updateWorkflow = mutation({
         updateData.description = args.description;
       }
       if (args.nodes !== undefined) {
-        // Garantir que nodes é um array válido
+        // Garantir que nodes é um array válido e serializável
         if (Array.isArray(args.nodes)) {
-          updateData.nodes = args.nodes;
+          try {
+            // Testar serialização antes de adicionar
+            const testSerialization = JSON.stringify(args.nodes);
+            // Validar estrutura básica de cada node
+            for (const node of args.nodes) {
+              if (!node.id || typeof node.id !== 'string') {
+                throw new Error(`Node inválido: id deve ser string, recebido: ${typeof node.id}`);
+              }
+              if (!node.type || typeof node.type !== 'string') {
+                throw new Error(`Node inválido: type deve ser string, recebido: ${typeof node.type}`);
+              }
+              if (!node.position || typeof node.position.x !== 'number' || typeof node.position.y !== 'number') {
+                throw new Error(`Node inválido: position deve ter x e y numéricos`);
+              }
+              if (!node.data || typeof node.data !== 'object') {
+                throw new Error(`Node inválido: data deve ser objeto`);
+              }
+              if (!Array.isArray(node.inputs)) {
+                throw new Error(`Node inválido: inputs deve ser array`);
+              }
+              if (!Array.isArray(node.outputs)) {
+                throw new Error(`Node inválido: outputs deve ser array`);
+              }
+            }
+            updateData.nodes = args.nodes;
+          } catch (e: any) {
+            console.error('[DEBUG] Erro ao validar nodes:', e.message, args.nodes);
+            throw new Error(`Erro ao validar nodes: ${e.message}`);
+          }
         } else {
           console.error('[DEBUG] nodes não é um array:', typeof args.nodes, args.nodes);
           throw new Error('nodes deve ser um array');
         }
       }
       if (args.edges !== undefined) {
-        // Garantir que edges é um array válido
+        // Garantir que edges é um array válido e serializável
         if (Array.isArray(args.edges)) {
-          updateData.edges = args.edges;
+          try {
+            // Testar serialização antes de adicionar
+            const testSerialization = JSON.stringify(args.edges);
+            // Validar estrutura básica de cada edge
+            for (const edge of args.edges) {
+              if (!edge.id || typeof edge.id !== 'string') {
+                throw new Error(`Edge inválido: id deve ser string, recebido: ${typeof edge.id}`);
+              }
+              if (!edge.source || typeof edge.source !== 'string') {
+                throw new Error(`Edge inválido: source deve ser string, recebido: ${typeof edge.source}`);
+              }
+              if (!edge.target || typeof edge.target !== 'string') {
+                throw new Error(`Edge inválido: target deve ser string, recebido: ${typeof edge.target}`);
+              }
+            }
+            updateData.edges = args.edges;
+          } catch (e: any) {
+            console.error('[DEBUG] Erro ao validar edges:', e.message, args.edges);
+            throw new Error(`Erro ao validar edges: ${e.message}`);
+          }
         } else {
           console.error('[DEBUG] edges não é um array:', typeof args.edges, args.edges);
           throw new Error('edges deve ser um array');
@@ -273,7 +320,31 @@ export const updateWorkflow = mutation({
       console.error('[DEBUG]', JSON.stringify(logEntry5));
       // #endregion
 
-      await ctx.db.patch(args.id, updateData);
+      // Tentar fazer o patch com tratamento de erro específico
+      try {
+        await ctx.db.patch(args.id, updateData);
+      } catch (patchError: any) {
+        // #region agent log
+        const logEntryPatchError = {
+          sessionId: 'debug-session',
+          runId: 'run1',
+          hypothesisId: 'F',
+          location: 'convex/workflows.ts:patch',
+          message: 'db.patch error caught',
+          data: {
+            patchErrorMessage: patchError?.message,
+            patchErrorString: String(patchError),
+            patchErrorName: patchError?.name,
+            patchErrorStack: patchError?.stack?.substring(0, 500),
+            updateDataKeys: Object.keys(updateData),
+            updateDataSample: JSON.stringify(updateData).substring(0, 1000)
+          },
+          timestamp: Date.now()
+        };
+        console.error('[DEBUG]', JSON.stringify(logEntryPatchError));
+        // #endregion
+        throw new Error(`Erro ao fazer patch no banco: ${patchError.message || String(patchError)}`);
+      }
 
       // #region agent log
       const logEntry6 = {
