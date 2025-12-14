@@ -18,16 +18,28 @@ export const initiateOAuth = action({
     // Gerar state para segurança (CSRF protection)
     const state = `${args.userId}-${Date.now()}-${Math.random().toString(36).substring(7)}`;
     
-    // CONVEX_SITE_URL é uma variável built-in do Convex que já está disponível
-    // Para desenvolvimento local, pode ser necessário usar localhost
-    // Para produção, será automaticamente a URL do Convex (ex: https://seu-projeto.convex.site)
-    const siteUrl = process.env.CONVEX_SITE_URL || "http://localhost:3000";
+    // CONVEX_SITE_URL é uma variável built-in do Convex que contém a URL do HTTP Actions
+    // Esta URL termina com .convex.site e é usada para callbacks OAuth
+    const siteUrl = process.env.CONVEX_SITE_URL;
+    
+    if (!siteUrl) {
+      throw new Error(
+        "CONVEX_SITE_URL não está disponível. " +
+        "Esta é uma variável built-in do Convex. " +
+        "Verifique se está usando a versão mais recente do Convex ou configure manualmente no Dashboard."
+      );
+    }
+    
     const redirectUri = `${siteUrl}/auth/github/callback`;
+    
+    // Log para debug (remover em produção se necessário)
+    console.log("GitHub OAuth - Site URL:", siteUrl);
+    console.log("GitHub OAuth - Redirect URI:", redirectUri);
     
     const scope = "repo"; // Acesso a repositórios privados
     const authUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scope}&state=${state}`;
     
-    return { authUrl, state };
+    return { authUrl, state, redirectUri }; // Retornar redirectUri para debug
   },
 });
 

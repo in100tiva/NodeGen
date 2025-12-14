@@ -93,9 +93,17 @@ const GitHubRepoNode: React.FC<GitHubRepoNodeProps> = ({ node, onUpdateData }) =
         'GitHub Authorization',
         `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no,scrollbars=yes,resizable=yes`
       );
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao iniciar autorização:', error);
-      alert(`Erro ao iniciar autorização: ${error}`);
+      let errorMessage = `Erro ao iniciar autorização: ${error?.message || error}`;
+      
+      // Se o erro mencionar redirect_uri, adicionar instruções
+      if (error?.message?.includes('redirect_uri') || String(error).includes('redirect_uri')) {
+        errorMessage += '\n\n💡 Dica: Verifique se a Callback URL no GitHub OAuth App corresponde à URL do Convex.';
+        errorMessage += '\nVeja: docs/FIX_GITHUB_REDIRECT_URI.md';
+      }
+      
+      alert(errorMessage);
       setIsAuthorizing(false);
     }
   };
