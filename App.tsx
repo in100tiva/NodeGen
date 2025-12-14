@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAction, useQuery } from 'convex/react';
 import { api } from './convex/_generated/api';
 import { Id } from './convex/_generated/dataModel';
-import { useWorkflowStore, useWorkflowMutations } from './store/useWorkflowStore';
+import { useWorkflowStore, useWorkflowMutations, useWorkflows } from './store/useWorkflowStore';
 import NodeCanvas from './components/NodeCanvas';
 import SettingsModal from './components/SettingsModal';
 import WorkflowList from './components/WorkflowList';
@@ -21,6 +21,9 @@ export default function App() {
   const { currentWorkflow, setCurrentWorkflowId } = useWorkflowStore();
   const { updateWorkflow, createWorkflow } = useWorkflowMutations();
   const executeWorkflowAction = useAction(api.openrouter.executeWorkflow);
+  
+  // Carregar workflows no store (necessário para restaurar workflow após reload)
+  useWorkflows();
   
   const [showWorkflowList, setShowWorkflowList] = useState(!currentWorkflow);
   const [nodes, setNodes] = useState<Node[]>([]);
@@ -43,6 +46,28 @@ export default function App() {
     nodes,
     edges,
   });
+
+  // Obter workflows do store para verificar se já foram carregados
+  const workflows = useWorkflowStore((state) => state.workflows);
+
+  // Restaurar workflowId após reload (ex: após autorização GitHub)
+  useEffect(() => {
+    const pendingWorkflowId = localStorage.getItem('pendingWorkflowId');
+    if (pendingWorkflowId && !currentWorkflow && workflows.length > 0) {
+      // Verificar se o workflow existe na lista
+      const workflowExists = workflows.some(w => w._id === pendingWorkflowId);
+      if (workflowExists) {
+        // Limpar do localStorage imediatamente para evitar loops
+        localStorage.removeItem('pendingWorkflowId');
+        // Restaurar o workflowId
+        setCurrentWorkflowId(pendingWorkflowId as Id<'workflows'>);
+        setShowWorkflowList(false);
+      } else {
+        // Se o workflow não existe mais, limpar do localStorage
+        localStorage.removeItem('pendingWorkflowId');
+      }
+    }
+  }, [workflows, currentWorkflow, setCurrentWorkflowId]); // Executar quando workflows forem carregados
 
   // Carregar workflow atual
   useEffect(() => {

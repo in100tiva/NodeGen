@@ -3,6 +3,7 @@ import { Node } from '../../types';
 import { useAction, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { IconGitHub, IconAlertCircle, IconCheck } from '../Icons';
+import { useWorkflowStore } from '../../store/useWorkflowStore';
 
 interface GitHubRepoNodeProps {
   node: Node;
@@ -71,7 +72,15 @@ const GitHubRepoNode: React.FC<GitHubRepoNodeProps> = ({ node, onUpdateData }) =
       if (event.data?.type === 'github-auth-success') {
         setIsAuthorizing(false);
         setAuthStatus('authorized');
-        window.location.reload(); // Recarregar para atualizar token
+        
+        // Salvar workflowId atual no localStorage antes do reload
+        const currentWorkflowId = useWorkflowStore.getState().currentWorkflowId;
+        if (currentWorkflowId) {
+          localStorage.setItem('pendingWorkflowId', currentWorkflowId);
+        }
+        
+        // Recarregar para atualizar token
+        window.location.reload();
       }
     };
 
