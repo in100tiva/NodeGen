@@ -383,6 +383,40 @@ export default function App() {
       };
       fetch('http://127.0.0.1:7243/ingest/a7576830-f069-47f1-89e2-c0c545ca634b', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logBeforeCall)}).catch(()=>{});
       console.log('[DEBUG FRONTEND] Before updateWorkflow:', logBeforeCall.data);
+      console.log('[DEBUG FRONTEND] Full updateArgs:', JSON.stringify(updateArgs, null, 2));
+      console.log('[DEBUG FRONTEND] Nodes validation:', nodesValidation);
+      console.log('[DEBUG FRONTEND] Edges validation:', edgesValidation);
+      console.log('[DEBUG FRONTEND] Settings validation:', settingsValidation);
+      // #endregion
+
+      // Validação final antes de enviar - garantir que não há valores inválidos
+      // #region agent log
+      const finalValidation = {
+        sessionId: 'debug-session',
+        runId: 'run1',
+        hypothesisId: 'A',
+        location: 'App.tsx:finalValidation',
+        message: 'Final validation before updateWorkflow call',
+        data: {
+          hasId: updateArgs.id !== undefined,
+          idType: typeof updateArgs.id,
+          idValue: String(updateArgs.id),
+          hasSettings: updateArgs.settings !== undefined,
+          settingsValid: updateArgs.settings && 
+            typeof updateArgs.settings.openRouterKey === 'string' && 
+            (updateArgs.settings.theme === 'dark' || updateArgs.settings.theme === 'light'),
+          hasNodes: updateArgs.nodes !== undefined,
+          nodesIsArray: updateArgs.nodes ? Array.isArray(updateArgs.nodes) : null,
+          nodesLength: updateArgs.nodes?.length,
+          hasEdges: updateArgs.edges !== undefined,
+          edgesIsArray: updateArgs.edges ? Array.isArray(updateArgs.edges) : null,
+          edgesLength: updateArgs.edges?.length,
+          updateArgsStringified: JSON.stringify(updateArgs)
+        },
+        timestamp: Date.now()
+      };
+      fetch('http://127.0.0.1:7243/ingest/a7576830-f069-47f1-89e2-c0c545ca634b', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(finalValidation)}).catch(()=>{});
+      console.log('[DEBUG FRONTEND] Final validation:', finalValidation.data);
       // #endregion
 
       try {
