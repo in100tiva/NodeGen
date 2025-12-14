@@ -190,27 +190,37 @@ export default function App() {
             }
             // Garantir que data é objeto e limpar valores inválidos
             // Simplificar node.data para garantir compatibilidade com Convex
+            // REMOVER objetos aninhados que podem causar problemas na validação
             if (!node.data || typeof node.data !== 'object') {
               node.data = { label: '' };
             } else {
-              // Limpar node.data para garantir que todos os valores são serializáveis
-              // Converter todos os valores para tipos primitivos (string, number, boolean)
+              // Limpar node.data para garantir que todos os valores são tipos primitivos
+              // NÃO incluir objetos aninhados - apenas strings, numbers, booleans
               const cleanedData: any = {};
               for (const key in node.data) {
                 const value = node.data[key];
-                // Só incluir valores serializáveis e converter para tipos primitivos
+                // Só incluir valores primitivos (string, number, boolean)
+                // REMOVER objetos aninhados completamente
                 if (value !== undefined && value !== null && typeof value !== 'function') {
-                  // Converter para tipos primitivos seguros
                   if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
                     cleanedData[key] = value;
                   } else if (typeof value === 'object') {
-                    // Se for objeto, tentar serializar e parsear para garantir que é válido
-                    try {
-                      const serialized = JSON.stringify(value);
-                      cleanedData[key] = JSON.parse(serialized);
-                    } catch (e) {
-                      // Se falhar, converter para string
-                      cleanedData[key] = String(value);
+                    // Objetos aninhados podem causar problemas - converter para string ou remover
+                    // Se for um objeto simples (não array), tentar converter para string
+                    if (Array.isArray(value)) {
+                      // Arrays podem causar problemas - converter para string JSON
+                      try {
+                        cleanedData[key] = JSON.stringify(value);
+                      } catch (e) {
+                        // Se falhar, remover
+                      }
+                    } else {
+                      // Objetos aninhados - converter para string JSON ou remover
+                      try {
+                        cleanedData[key] = JSON.stringify(value);
+                      } catch (e) {
+                        // Se falhar, remover
+                      }
                     }
                   } else {
                     // Outros tipos, converter para string
