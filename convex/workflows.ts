@@ -64,84 +64,126 @@ export const updateWorkflow = mutation({
     createVersion: v.optional(v.boolean()), // Auto-save de versão
   },
   handler: async (ctx, args) => {
-    // TODO: Reativar autenticação quando configurada no Convex Dashboard
-    // const identity = await ctx.auth.getUserIdentity();
-    // if (!identity) {
-    //   throw new Error("Not authenticated");
-    // }
-    // const userId = identity.tokenIdentifier;
-    
-    // Temporário: usar um userId fixo para desenvolvimento
-    const userId = "dev-user-123";
-    const workflow = await ctx.db.get(args.id);
+    try {
+      // TODO: Reativar autenticação quando configurada no Convex Dashboard
+      // const identity = await ctx.auth.getUserIdentity();
+      // if (!identity) {
+      //   throw new Error("Not authenticated");
+      // }
+      // const userId = identity.tokenIdentifier;
+      
+      // Temporário: usar um userId fixo para desenvolvimento
+      const userId = "dev-user-123";
+      const workflow = await ctx.db.get(args.id);
 
-    if (!workflow) {
-      throw new Error("Workflow not found");
+      if (!workflow) {
+        throw new Error("Workflow not found");
+      }
+
+      if (workflow.userId !== userId) {
+        throw new Error("Not authorized");
+      }
+
+      // TODO: Implementar log de mudanças quando changeHistory estiver disponível
+      // Detectar mudanças para log
+      // if (args.nodes !== undefined && JSON.stringify(workflow.nodes) !== JSON.stringify(args.nodes)) {
+      //   await ctx.runMutation(api.changeHistory.logChange, {
+      //     workflowId: args.id,
+      //     action: "update",
+      //     targetType: "workflow",
+      //     changes: { nodes: { from: workflow.nodes, to: args.nodes } },
+      //   });
+      // }
+
+      // if (args.edges !== undefined && JSON.stringify(workflow.edges) !== JSON.stringify(args.edges)) {
+      //   await ctx.runMutation(api.changeHistory.logChange, {
+      //     workflowId: args.id,
+      //     action: "update",
+      //     targetType: "workflow",
+      //     changes: { edges: { from: workflow.edges, to: args.edges } },
+      //   });
+      // }
+
+      // Validar e preparar settings se fornecido
+      let validatedSettings = undefined;
+      if (args.settings !== undefined) {
+        // Garantir que settings tem o formato correto
+        // Se openRouterKey ou theme não estiverem presentes, usar valores do workflow atual
+        const openRouterKey = args.settings.openRouterKey !== undefined 
+          ? args.settings.openRouterKey 
+          : (workflow.settings?.openRouterKey || "");
+        const theme = args.settings.theme !== undefined 
+          ? args.settings.theme 
+          : (workflow.settings?.theme || "dark");
+        
+        // Validar que theme é "dark" ou "light"
+        const validTheme = theme === "dark" || theme === "light" ? theme : "dark";
+        
+        validatedSettings = {
+          openRouterKey: typeof openRouterKey === "string" ? openRouterKey : "",
+          theme: validTheme,
+        };
+      }
+
+      // Preparar objeto de atualização
+      const updateData: any = {
+        updatedAt: Date.now(),
+      };
+
+      if (args.name !== undefined) {
+        updateData.name = args.name;
+      }
+      if (args.description !== undefined) {
+        updateData.description = args.description;
+      }
+      if (args.nodes !== undefined) {
+        updateData.nodes = args.nodes;
+      }
+      if (args.edges !== undefined) {
+        updateData.edges = args.edges;
+      }
+      if (validatedSettings !== undefined) {
+        updateData.settings = validatedSettings;
+      }
+
+      await ctx.db.patch(args.id, updateData);
+
+      // TODO: Implementar auto-save de versão quando versions estiver disponível
+      // Auto-save de versão se solicitado
+      // if (args.createVersion && (args.nodes !== undefined || args.edges !== undefined)) {
+      //   const versions = await ctx.db
+      //     .query("workflowVersions")
+      //     .withIndex("by_workflow", (q) => q.eq("workflowId", args.id))
+      //     .order("desc")
+      //     .take(1);
+
+      //   const lastVersion = versions[0];
+      //   let nextVersion = "1.0.0";
+
+      //   if (lastVersion) {
+      //     const parts = lastVersion.version.split(".");
+      //     const minor = parseInt(parts[1] || "0") + 1;
+      //     nextVersion = `${parts[0]}.${minor}.0`;
+      //   }
+
+      //   await ctx.runMutation(api.versions.createVersion, {
+      //     workflowId: args.id,
+      //     version: nextVersion,
+      //     nodes: args.nodes || workflow.nodes,
+      //     edges: args.edges || workflow.edges,
+      //     settings: args.settings || workflow.settings,
+      //     description: "Auto-save",
+      //     setAsCurrent: false,
+      //   });
+      // }
+
+      return args.id;
+    } catch (error: any) {
+      // Log do erro para debug
+      console.error("Erro em updateWorkflow:", error);
+      console.error("Args recebidos:", JSON.stringify(args, null, 2));
+      throw new Error(`Erro ao atualizar workflow: ${error.message || String(error)}`);
     }
-
-    if (workflow.userId !== userId) {
-      throw new Error("Not authorized");
-    }
-
-    // TODO: Implementar log de mudanças quando changeHistory estiver disponível
-    // Detectar mudanças para log
-    // if (args.nodes !== undefined && JSON.stringify(workflow.nodes) !== JSON.stringify(args.nodes)) {
-    //   await ctx.runMutation(api.changeHistory.logChange, {
-    //     workflowId: args.id,
-    //     action: "update",
-    //     targetType: "workflow",
-    //     changes: { nodes: { from: workflow.nodes, to: args.nodes } },
-    //   });
-    // }
-
-    // if (args.edges !== undefined && JSON.stringify(workflow.edges) !== JSON.stringify(args.edges)) {
-    //   await ctx.runMutation(api.changeHistory.logChange, {
-    //     workflowId: args.id,
-    //     action: "update",
-    //     targetType: "workflow",
-    //     changes: { edges: { from: workflow.edges, to: args.edges } },
-    //   });
-    // }
-
-    await ctx.db.patch(args.id, {
-      ...(args.name !== undefined && { name: args.name }),
-      ...(args.description !== undefined && { description: args.description }),
-      ...(args.nodes !== undefined && { nodes: args.nodes }),
-      ...(args.edges !== undefined && { edges: args.edges }),
-      ...(args.settings !== undefined && { settings: args.settings }),
-      updatedAt: Date.now(),
-    });
-
-    // TODO: Implementar auto-save de versão quando versions estiver disponível
-    // Auto-save de versão se solicitado
-    // if (args.createVersion && (args.nodes !== undefined || args.edges !== undefined)) {
-    //   const versions = await ctx.db
-    //     .query("workflowVersions")
-    //     .withIndex("by_workflow", (q) => q.eq("workflowId", args.id))
-    //     .order("desc")
-    //     .take(1);
-
-    //   const lastVersion = versions[0];
-    //   let nextVersion = "1.0.0";
-
-    //   if (lastVersion) {
-    //     const parts = lastVersion.version.split(".");
-    //     const minor = parseInt(parts[1] || "0") + 1;
-    //     nextVersion = `${parts[0]}.${minor}.0`;
-    //   }
-
-    //   await ctx.runMutation(api.versions.createVersion, {
-    //     workflowId: args.id,
-    //     version: nextVersion,
-    //     nodes: args.nodes || workflow.nodes,
-    //     edges: args.edges || workflow.edges,
-    //     settings: args.settings || workflow.settings,
-    //     description: "Auto-save",
-    //     setAsCurrent: false,
-    //   });
-    // }
-
-    return args.id;
   },
 });
 
