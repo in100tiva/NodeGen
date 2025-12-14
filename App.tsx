@@ -318,19 +318,15 @@ export default function App() {
         id: currentWorkflow._id,
       };
       
-      // Sempre incluir settings (é obrigatório no schema da tabela)
-      // Mas garantir que tem a estrutura correta
+      // Incluir settings apenas se tiver a estrutura correta
+      // Como settings é opcional na mutation, só enviar se válido
       if (normalizedSettings && 
           typeof normalizedSettings.openRouterKey === 'string' && 
           (normalizedSettings.theme === 'dark' || normalizedSettings.theme === 'light')) {
         updateArgs.settings = normalizedSettings;
-      } else {
-        // Se settings inválido, usar valores padrão
-        updateArgs.settings = {
-          openRouterKey: '',
-          theme: 'dark'
-        };
       }
+      // Se settings inválido, não enviar (deixar como está no banco)
+      // O backend vai usar os settings atuais do workflow
       
       if (cleanNodes !== undefined) {
         updateArgs.nodes = cleanNodes;
