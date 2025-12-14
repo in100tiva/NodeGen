@@ -603,8 +603,9 @@ export const updateWorkflowWithJsonNodes = mutation({
           throw new Error(`Erro ao parsear nodesJson: ${e.message}`);
         }
       } else if (args.nodesJson === '[]' || args.nodesJson?.trim() === '') {
-        // Se nodesJson é array vazio, não atualizar nodes (deixar como está)
-        console.error('[ALTERNATIVE] nodesJson is empty, skipping nodes update');
+        // Se nodesJson é array vazio, definir nodes como array vazio
+        console.error('[ALTERNATIVE] nodesJson is empty, setting nodes to empty array');
+        updateData.nodes = [];
       }
       
       // Parse edges de JSON string
@@ -651,13 +652,34 @@ export const updateWorkflowWithJsonNodes = mutation({
       }
       
       console.error('[ALTERNATIVE] Before db.patch, updateData keys:', Object.keys(updateData));
+      console.error('[ALTERNATIVE] updateData content:', JSON.stringify(updateData).substring(0, 2000));
+      
+      // Validar updateData antes de fazer patch
+      if (updateData.nodes) {
+        console.error('[ALTERNATIVE] Validating nodes before patch, count:', updateData.nodes.length);
+        for (let i = 0; i < updateData.nodes.length; i++) {
+          const node = updateData.nodes[i];
+          if (!node.id || typeof node.id !== 'string') {
+            throw new Error(`Node ${i} has invalid id: ${typeof node.id}`);
+          }
+          if (!node.type || typeof node.type !== 'string') {
+            throw new Error(`Node ${i} has invalid type: ${typeof node.type}`);
+          }
+          if (!node.position || typeof node.position.x !== 'number' || typeof node.position.y !== 'number') {
+            throw new Error(`Node ${i} has invalid position`);
+          }
+        }
+      }
+      
       await ctx.db.patch(args.id, updateData);
       console.error('[ALTERNATIVE] db.patch succeeded');
       return args.id;
     } catch (error: any) {
       console.error('[ALTERNATIVE ERROR]', error);
+      console.error('[ALTERNATIVE ERROR] Message:', error.message);
       console.error('[ALTERNATIVE ERROR] Stack:', error.stack);
-      throw error;
+      console.error('[ALTERNATIVE ERROR] Args received:', JSON.stringify(args).substring(0, 1000));
+      throw new Error(`Erro ao atualizar workflow: ${error.message || String(error)}`);
     }
   },
 });
