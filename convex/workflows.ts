@@ -506,6 +506,37 @@ export const updateWorkflow = mutation({
   },
 });
 
+// Mutation de teste para isolar o problema
+export const testUpdateWorkflow = mutation({
+  args: {
+    id: v.id("workflows"),
+    nodes: v.optional(v.array(v.any())),
+  },
+  handler: async (ctx, args) => {
+    console.error('[TEST] testUpdateWorkflow called with:', {
+      id: String(args.id),
+      hasNodes: args.nodes !== undefined,
+      nodesCount: args.nodes?.length || 0
+    });
+    
+    const workflow = await ctx.db.get(args.id);
+    if (!workflow) {
+      throw new Error("Workflow not found");
+    }
+    
+    const updateData: any = {
+      updatedAt: Date.now(),
+    };
+    
+    if (args.nodes !== undefined) {
+      updateData.nodes = args.nodes;
+    }
+    
+    await ctx.db.patch(args.id, updateData);
+    return args.id;
+  },
+});
+
 export const deleteWorkflow = mutation({
   args: { id: v.id("workflows") },
   handler: async (ctx, args) => {

@@ -328,10 +328,12 @@ export default function App() {
       // Se settings inválido, não enviar (deixar como está no banco)
       // O backend vai usar os settings atuais do workflow
       
-      if (cleanNodes !== undefined) {
+      // Só incluir nodes/edges se não forem arrays vazios
+      // Arrays vazios podem causar problemas na validação do Convex
+      if (cleanNodes !== undefined && cleanNodes.length > 0) {
         updateArgs.nodes = cleanNodes;
       }
-      if (cleanEdges !== undefined) {
+      if (cleanEdges !== undefined && cleanEdges.length > 0) {
         updateArgs.edges = cleanEdges;
       }
 
