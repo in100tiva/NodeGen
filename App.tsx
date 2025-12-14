@@ -188,26 +188,32 @@ export default function App() {
               };
             }
             // Garantir que data é objeto e limpar valores inválidos
+            // Simplificar node.data para garantir compatibilidade com Convex
             if (!node.data || typeof node.data !== 'object') {
               node.data = { label: '' };
             } else {
               // Limpar node.data para garantir que todos os valores são serializáveis
-              // Remover undefined, null, functions, etc.
+              // Converter todos os valores para tipos primitivos (string, number, boolean)
               const cleanedData: any = {};
               for (const key in node.data) {
                 const value = node.data[key];
-                // Só incluir valores serializáveis
+                // Só incluir valores serializáveis e converter para tipos primitivos
                 if (value !== undefined && value !== null && typeof value !== 'function') {
-                  try {
-                    JSON.stringify(value);
+                  // Converter para tipos primitivos seguros
+                  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
                     cleanedData[key] = value;
-                  } catch (e) {
-                    // Se não for serializável, converter para string ou remover
-                    if (typeof value === 'object') {
-                      cleanedData[key] = {};
-                    } else {
+                  } else if (typeof value === 'object') {
+                    // Se for objeto, tentar serializar e parsear para garantir que é válido
+                    try {
+                      const serialized = JSON.stringify(value);
+                      cleanedData[key] = JSON.parse(serialized);
+                    } catch (e) {
+                      // Se falhar, converter para string
                       cleanedData[key] = String(value);
                     }
+                  } else {
+                    // Outros tipos, converter para string
+                    cleanedData[key] = String(value);
                   }
                 }
               }
