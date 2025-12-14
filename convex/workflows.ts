@@ -319,8 +319,13 @@ export const updateWorkflowWithJsonNodes = mutation({
         throw new Error("Not authorized");
       }
       
+      // Inicializar updateData com valores atuais do workflow
+      // Isso garante que o schema sempre tenha nodes e edges válidos
       const updateData: any = {
         updatedAt: Date.now(),
+        // Incluir nodes e edges atuais como padrão (serão sobrescritos se fornecidos)
+        nodes: workflow.nodes || [],
+        edges: workflow.edges || [],
       };
       
       // Parse nodes de JSON string
@@ -425,13 +430,23 @@ export const updateWorkflowWithJsonNodes = mutation({
       }
       // Se edgesJson é undefined, não atualizar edges (manter os atuais)
       
-      // Settings
+      // Settings - sempre incluir (schema requer)
       if (args.settings !== undefined) {
+        // Validar settings antes de adicionar
+        if (typeof args.settings !== 'object' || args.settings === null) {
+          throw new Error('settings deve ser um objeto');
+        }
+        if (typeof args.settings.openRouterKey !== 'string') {
+          throw new Error('settings.openRouterKey deve ser string');
+        }
+        if (args.settings.theme !== 'dark' && args.settings.theme !== 'light') {
+          throw new Error(`settings.theme deve ser 'dark' ou 'light'`);
+        }
         updateData.settings = args.settings;
       } else {
         // Se settings não foi fornecido, usar os settings atuais do workflow
         // O schema requer que settings sempre exista
-        if (workflow.settings) {
+        if (workflow.settings && typeof workflow.settings === 'object') {
           updateData.settings = workflow.settings;
         } else {
           // Fallback: criar settings padrão
@@ -442,54 +457,69 @@ export const updateWorkflowWithJsonNodes = mutation({
         }
       }
       
+      // Garantir que nodes e edges são arrays válidos
+      if (!Array.isArray(updateData.nodes)) {
+        console.warn('[WARN] nodes não é array, convertendo para array vazio');
+        updateData.nodes = [];
+      }
+      if (!Array.isArray(updateData.edges)) {
+        console.warn('[WARN] edges não é array, convertendo para array vazio');
+        updateData.edges = [];
+      }
+      
       // Validar updateData antes de fazer patch
-      if (updateData.nodes !== undefined) {
-        if (!Array.isArray(updateData.nodes)) {
-          throw new Error('updateData.nodes deve ser um array');
+      // Nodes sempre deve ser array (já garantido acima)
+      for (let i = 0; i < updateData.nodes.length; i++) {
+        const node = updateData.nodes[i];
+        if (!node || typeof node !== 'object') {
+          throw new Error(`Node ${i} is not an object`);
         }
-        for (let i = 0; i < updateData.nodes.length; i++) {
-          const node = updateData.nodes[i];
-          if (!node.id || typeof node.id !== 'string') {
-            throw new Error(`Node ${i} has invalid id: ${typeof node.id}`);
-          }
-          if (!node.type || typeof node.type !== 'string') {
-            throw new Error(`Node ${i} has invalid type: ${typeof node.type}`);
-          }
-          if (!node.position || typeof node.position.x !== 'number' || typeof node.position.y !== 'number') {
-            throw new Error(`Node ${i} has invalid position`);
-          }
+        if (!node.id || typeof node.id !== 'string') {
+          throw new Error(`Node ${i} has invalid id: ${typeof node.id}`);
         }
-      }
-      
-      if (updateData.edges !== undefined) {
-        if (!Array.isArray(updateData.edges)) {
-          throw new Error('updateData.edges deve ser um array');
+        if (!node.type || typeof node.type !== 'string') {
+          throw new Error(`Node ${i} has invalid type: ${typeof node.type}`);
         }
-        for (let i = 0; i < updateData.edges.length; i++) {
-          const edge = updateData.edges[i];
-          if (!edge.id || typeof edge.id !== 'string') {
-            throw new Error(`Edge ${i} has invalid id: ${typeof edge.id}`);
-          }
-          if (!edge.source || typeof edge.source !== 'string') {
-            throw new Error(`Edge ${i} has invalid source: ${typeof edge.source}`);
-          }
-          if (!edge.target || typeof edge.target !== 'string') {
-            throw new Error(`Edge ${i} has invalid target: ${typeof edge.target}`);
-          }
+        if (!node.position || typeof node.position !== 'object' || typeof node.position.x !== 'number' || typeof node.position.y !== 'number') {
+          throw new Error(`Node ${i} has invalid position`);
+        }
+        if (!node.data || typeof node.data !== 'object') {
+          throw new Error(`Node ${i} has invalid data`);
+        }
+        if (!Array.isArray(node.inputs)) {
+          throw new Error(`Node ${i} has invalid inputs`);
+        }
+        if (!Array.isArray(node.outputs)) {
+          throw new Error(`Node ${i} has invalid outputs`);
         }
       }
       
-      // Validar settings
-      if (updateData.settings !== undefined) {
-        if (typeof updateData.settings !== 'object' || updateData.settings === null) {
-          throw new Error('updateData.settings deve ser um objeto');
+      // Edges sempre deve ser array (já garantido acima)
+      for (let i = 0; i < updateData.edges.length; i++) {
+        const edge = updateData.edges[i];
+        if (!edge || typeof edge !== 'object') {
+          throw new Error(`Edge ${i} is not an object`);
         }
-        if (typeof updateData.settings.openRouterKey !== 'string') {
-          throw new Error('updateData.settings.openRouterKey deve ser string');
+        if (!edge.id || typeof edge.id !== 'string') {
+          throw new Error(`Edge ${i} has invalid id: ${typeof edge.id}`);
         }
-        if (updateData.settings.theme !== 'dark' && updateData.settings.theme !== 'light') {
-          throw new Error(`updateData.settings.theme deve ser 'dark' ou 'light', recebido: ${updateData.settings.theme}`);
+        if (!edge.source || typeof edge.source !== 'string') {
+          throw new Error(`Edge ${i} has invalid source: ${typeof edge.source}`);
         }
+        if (!edge.target || typeof edge.target !== 'string') {
+          throw new Error(`Edge ${i} has invalid target: ${typeof edge.target}`);
+        }
+      }
+      
+      // Settings sempre deve existir (já garantido acima)
+      if (typeof updateData.settings !== 'object' || updateData.settings === null) {
+        throw new Error('updateData.settings deve ser um objeto');
+      }
+      if (typeof updateData.settings.openRouterKey !== 'string') {
+        throw new Error('updateData.settings.openRouterKey deve ser string');
+      }
+      if (updateData.settings.theme !== 'dark' && updateData.settings.theme !== 'light') {
+        throw new Error(`updateData.settings.theme deve ser 'dark' ou 'light', recebido: ${updateData.settings.theme}`);
       }
       
       // Log antes de fazer patch (apenas se houver dados para atualizar além de updatedAt)
