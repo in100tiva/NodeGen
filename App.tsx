@@ -459,7 +459,17 @@ export default function App() {
         // #endregion
         console.log('[DEBUG FRONTEND] Calling updateWorkflowWithJsonNodes (always) with:', alternativeArgs);
         console.log('[DEBUG FRONTEND] updateWorkflowWithJsonNodes function type:', typeof updateWorkflowWithJsonNodes);
-        console.log('[DEBUG FRONTEND] updateWorkflowWithJsonNodes function:', updateWorkflowWithJsonNodes);
+        console.log('[DEBUG FRONTEND] updateWorkflowWithJsonNodes is null?', updateWorkflowWithJsonNodes === null);
+        console.log('[DEBUG FRONTEND] updateWorkflowWithJsonNodes is undefined?', updateWorkflowWithJsonNodes === undefined);
+        
+        if (!updateWorkflowWithJsonNodes) {
+          const error = new Error('updateWorkflowWithJsonNodes mutation is not available');
+          console.error('[DEBUG FRONTEND] updateWorkflowWithJsonNodes is not available, falling back to updateWorkflow');
+          // Fallback para mutation normal
+          await updateWorkflow(updateArgs);
+          return;
+        }
+        
         try {
           await updateWorkflowWithJsonNodes(alternativeArgs);
           console.log('[DEBUG FRONTEND] updateWorkflowWithJsonNodes succeeded');
