@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAction, useQuery } from 'convex/react';
 import { api } from './convex/_generated/api';
+import { Id } from './convex/_generated/dataModel';
 import { useWorkflowStore, useWorkflowMutations } from './store/useWorkflowStore';
 import NodeCanvas from './components/NodeCanvas';
 import SettingsModal from './components/SettingsModal';
@@ -18,7 +19,7 @@ import { useAuth } from './hooks/useAuth';
 export default function App() {
   // Removido useConvexAuth temporariamente até autenticação estar configurada
   const { currentWorkflow, setCurrentWorkflowId } = useWorkflowStore();
-  const { updateWorkflow } = useWorkflowMutations();
+  const { updateWorkflow, createWorkflow } = useWorkflowMutations();
   const executeWorkflowAction = useAction(api.openrouter.executeWorkflow);
   
   const [showWorkflowList, setShowWorkflowList] = useState(!currentWorkflow);
@@ -251,7 +252,8 @@ export default function App() {
     }
   };
 
-  const handleSelectWorkflow = () => {
+  const handleSelectWorkflow = (workflowId: Id<'workflows'>) => {
+    setCurrentWorkflowId(workflowId);
     setShowWorkflowList(false);
   };
 
@@ -264,8 +266,28 @@ export default function App() {
     setEdges([]);
   };
 
+  const handleCreateWorkflow = async () => {
+    try {
+      const workflowId = await createWorkflow({
+        name: 'Novo Workflow',
+        description: '',
+        nodes: [],
+        edges: [],
+        settings: {
+          openRouterKey: settings.openRouterKey || '',
+          theme: settings.theme || 'dark',
+        },
+      });
+      setCurrentWorkflowId(workflowId);
+      setShowWorkflowList(false);
+    } catch (error) {
+      console.error('Erro ao criar workflow:', error);
+      alert('Erro ao criar workflow. Tente novamente.');
+    }
+  };
+
   if (showWorkflowList) {
-    return <WorkflowList onSelectWorkflow={handleSelectWorkflow} />;
+    return <WorkflowList onSelectWorkflow={handleSelectWorkflow} onCreateWorkflow={handleCreateWorkflow} />;
   }
 
   return (

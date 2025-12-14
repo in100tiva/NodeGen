@@ -6,17 +6,40 @@ import { IconPlus } from './Icons';
 
 interface WorkflowListProps {
   onSelectWorkflow: (workflowId: Id<'workflows'>) => void;
+  onCreateWorkflow?: () => void;
 }
 
-const WorkflowList: React.FC<WorkflowListProps> = ({ onSelectWorkflow }) => {
-  const workflows = useQuery(api.workflows.listWorkflows, {}) || [];
+const WorkflowList: React.FC<WorkflowListProps> = ({ onSelectWorkflow, onCreateWorkflow }) => {
+  const workflowsQuery = useQuery(api.workflows.listWorkflows, {});
+  const workflows = workflowsQuery || [];
+
+  // Debug: verificar se workflows estão sendo carregados
+  React.useEffect(() => {
+    if (workflowsQuery === undefined) {
+      console.log('⏳ Carregando workflows...');
+    } else if (workflowsQuery === null) {
+      console.warn('⚠️ Query retornou null');
+    } else {
+      console.log('✅ Workflows carregados:', workflows);
+      console.log('📊 Número de workflows:', workflows.length);
+    }
+  }, [workflowsQuery, workflows]);
 
   return (
     <div className="flex flex-col h-screen w-full bg-background text-zinc-100 p-8">
       <div className="max-w-6xl mx-auto w-full">
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-3xl font-bold">Meus Workflows</h1>
-          <button className="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent/90 transition-colors">
+          <button 
+            onClick={() => {
+              if (onCreateWorkflow) {
+                onCreateWorkflow();
+              } else {
+                console.error('onCreateWorkflow não está definido');
+              }
+            }}
+            className="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent/90 transition-colors"
+          >
             <IconPlus className="w-5 h-5" />
             Novo Workflow
           </button>
