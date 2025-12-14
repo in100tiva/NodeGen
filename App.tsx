@@ -15,9 +15,9 @@ import { Node, Edge, AppSettings, NodeType } from './types';
 import { IconSettings, IconPlay, IconMessageSquare, IconCpu, IconMonitor, IconLogOut, IconAlertCircle, IconCheck, IconUsers, IconShare2, IconDownload, IconGitBranch, IconCode, IconRepeat, IconLayers, IconVariable, IconGlobe, IconBell } from './components/Icons';
 import NotificationBell from './components/NotificationBell';
 import { useAuth } from './hooks/useAuth';
+import { useAuthActions } from '@convex-dev/auth/react';
 
 export default function App() {
-  // Removido useConvexAuth temporariamente até autenticação estar configurada
   const { currentWorkflow, setCurrentWorkflowId } = useWorkflowStore();
   const { updateWorkflow, createWorkflow } = useWorkflowMutations();
   const updateWorkflowWithJsonNodes = useMutation(api.workflows.updateWorkflowWithJsonNodes);
@@ -40,8 +40,18 @@ export default function App() {
   const [outputPanel, setOutputPanel] = useState<{ nodeId: string; result: any; nodeLabel?: string } | null>(null);
   const [showSharedList, setShowSharedList] = useState(false);
   const canvasRef = useRef<HTMLDivElement>(null);
-  const { isAuthenticated, logout } = useAuth();
+  const { isAuthenticated, user } = useAuth();
+  const { signOut } = useAuthActions();
   const preventAutoSaveRef = useRef(false); // Flag para prevenir auto-save após reload
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+    } catch (error) {
+      console.error('Erro ao fazer logout:', error);
+      alert('Erro ao fazer logout. Tente novamente.');
+    }
+  };
   
   // Validar workflow
   const validationResult = useQuery(api.workflowValidation.validateWorkflow, {
@@ -803,8 +813,33 @@ export default function App() {
             <button
               onClick={() => setIsSettingsOpen(true)}
               className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors"
+              title="Configurações"
             >
               <IconSettings className="w-5 h-5" />
+            </button>
+
+            {/* User info and logout */}
+            {user && (
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-zinc-800/50 border border-zinc-700 rounded-lg">
+                {user.pictureUrl && (
+                  <img 
+                    src={user.pictureUrl} 
+                    alt={user.name || 'User'} 
+                    className="w-6 h-6 rounded-full"
+                  />
+                )}
+                <span className="text-xs text-zinc-300 hidden md:block">
+                  {user.name || user.email || 'Usuário'}
+                </span>
+              </div>
+            )}
+            
+            <button
+              onClick={handleLogout}
+              className="p-2 text-zinc-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+              title="Sair"
+            >
+              <IconLogOut className="w-5 h-5" />
             </button>
         </div>
       </header>

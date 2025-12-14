@@ -46,15 +46,11 @@ export const executeWorkflow = action({
     apiKey: v.string(),
   },
   handler: async (ctx, args) => {
-    // TODO: Reativar autenticação quando configurada no Convex Dashboard
-    // const identity = await ctx.auth.getUserIdentity();
-    // if (!identity) {
-    //   throw new Error("Not authenticated");
-    // }
-    // const userId = identity.tokenIdentifier;
-    
-    // Temporário: usar um userId fixo para desenvolvimento
-    const userId = "dev-user-123";
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+    const userId = identity.tokenIdentifier;
 
     // Verificar ownership do workflow
     const workflow = await ctx.runQuery(api.workflows.getWorkflow, {
@@ -143,8 +139,15 @@ export const executeWorkflow = action({
                 continue;
               }
 
+              // Obter userId do contexto de autenticação
+              const identity = await ctx.auth.getUserIdentity();
+              if (!identity) {
+                throw new Error("Not authenticated");
+              }
+              const userId = identity.tokenIdentifier;
+              
               const file = await ctx.runAction(api.github.readFileContent, {
-                userId: "dev-user-123", // TODO: Usar userId real
+                userId,
                 owner,
                 repo: repoName,
                 path,
@@ -158,8 +161,15 @@ export const executeWorkflow = action({
                 continue;
               }
 
+              // Obter userId do contexto de autenticação
+              const identity = await ctx.auth.getUserIdentity();
+              if (!identity) {
+                throw new Error("Not authenticated");
+              }
+              const userId = identity.tokenIdentifier;
+              
               const results = await ctx.runAction(api.github.searchCode, {
-                userId: "dev-user-123", // TODO: Usar userId real
+                userId,
                 owner,
                 repo: repoName,
                 query: searchQuery,

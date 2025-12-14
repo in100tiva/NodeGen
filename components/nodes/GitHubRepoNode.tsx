@@ -4,6 +4,7 @@ import { useAction, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { IconGitHub, IconAlertCircle, IconCheck } from '../Icons';
 import { useWorkflowStore } from '../../store/useWorkflowStore';
+import { useAuth } from '../../hooks/useAuth';
 
 interface GitHubRepoNodeProps {
   node: Node;
@@ -11,7 +12,9 @@ interface GitHubRepoNodeProps {
 }
 
 const GitHubRepoNode: React.FC<GitHubRepoNodeProps> = ({ node, onUpdateData }) => {
-  const userId = "dev-user-123"; // TODO: Usar userId real quando autenticação estiver configurada
+  // Obter userId do hook de autenticação
+  const { userId } = useAuth();
+  const actualUserId = userId || "dev-user-123"; // Fallback temporário
   
   const [repoInput, setRepoInput] = useState(node.data.githubRepo || '');
   const [branch, setBranch] = useState(node.data.githubBranch || 'main');
@@ -24,7 +27,7 @@ const GitHubRepoNode: React.FC<GitHubRepoNodeProps> = ({ node, onUpdateData }) =
   const validateToken = useAction(api.github.validateGitHubToken);
   
   // Usar useQuery normalmente - se der erro, será tratado pelo Error Boundary no NodeCard
-  const tokenData = useQuery(api.github.getGitHubToken, { userId });
+  const tokenData = useQuery(api.github.getGitHubToken, { userId: actualUserId });
 
   const [authStatus, setAuthStatus] = useState<'unknown' | 'authorized' | 'unauthorized'>('unknown');
 
@@ -91,7 +94,7 @@ const GitHubRepoNode: React.FC<GitHubRepoNodeProps> = ({ node, onUpdateData }) =
   const handleAuthorize = async () => {
     setIsAuthorizing(true);
     try {
-      const { authUrl } = await initiateOAuth({ userId });
+      const { authUrl } = await initiateOAuth({ userId: actualUserId });
       // Abrir popup para autorização
       const width = 600;
       const height = 700;

@@ -1,20 +1,16 @@
 import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
 import { api } from "./_generated/api";
+import { auth } from "./auth";
 
 const http = httpRouter();
 
-// Google OAuth
-http.route({
-  path: "/auth/google",
-  method: "GET",
-  handler: httpAction(async (ctx, request) => {
-    // Implementação do Google OAuth será feita via Convex Auth
-    return new Response("Google OAuth", { status: 200 });
-  }),
-});
+// Convex Auth routes - adiciona todas as rotas de autenticação automaticamente
+auth.addHttpRoutes(http);
 
-// GitHub OAuth Callback
+// GitHub OAuth Callback para tokens de API (separado da autenticação de usuário)
+// Este callback é usado pelos nodes GitHub para obter tokens de API
+// A autenticação de usuário usa /api/auth/callback/github (gerenciado pelo Convex Auth)
 http.route({
   path: "/auth/github/callback",
   method: "GET",
@@ -36,8 +32,12 @@ http.route({
     }
 
     // Extrair userId do state
+    // NOTA: Este callback é para tokens de API do GitHub, não para autenticação de usuário
+    // A autenticação de usuário é gerenciada pelo Convex Auth em /api/auth/callback/github
     const userId = state.split("-")[0];
 
+    // Usar GITHUB_CLIENT_ID e GITHUB_CLIENT_SECRET para tokens de API
+    // AUTH_GITHUB_ID e AUTH_GITHUB_SECRET são usados pelo Convex Auth para autenticação
     const clientId = process.env.GITHUB_CLIENT_ID;
     const clientSecret = process.env.GITHUB_CLIENT_SECRET;
 

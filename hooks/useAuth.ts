@@ -1,24 +1,24 @@
-import { useState, useCallback } from 'react';
-
-interface AuthState {
-  isAuthenticated: boolean;
-  userId: string | null;
-}
+import { useConvexAuth } from "@convex-dev/auth/react";
+import { useQuery } from "convex/react";
+import { api } from "../convex/_generated/api";
 
 export function useAuth() {
-  const [authState] = useState<AuthState>({
-    isAuthenticated: true, // Temporário: sempre autenticado em desenvolvimento
-    userId: 'dev-user-123',
-  });
+  const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
+  
+  // Obter informações do usuário autenticado
+  const user = useQuery(api.auth.getCurrentUser);
 
-  const logout = useCallback(() => {
-    // TODO: Implementar logout quando autenticação estiver configurada
-    console.log('Logout não implementado ainda');
-  }, []);
+  const logout = async () => {
+    // O logout será feito via useAuthActions no componente
+    // Esta função é mantida para compatibilidade
+    console.log('Use signOut from useAuthActions para fazer logout');
+  };
 
   return {
-    isAuthenticated: authState.isAuthenticated,
-    userId: authState.userId,
+    isAuthenticated: isAuthenticated && !!user,
+    isLoading: authLoading,
+    userId: user?.tokenIdentifier || null,
+    user,
     logout,
   };
 }

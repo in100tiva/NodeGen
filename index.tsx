@@ -1,7 +1,9 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
-import { ConvexProvider, ConvexReactClient } from 'convex/react';
+import { ConvexReactClient } from 'convex/react';
+import { ConvexAuthProvider, Authenticated, Unauthenticated } from '@convex-dev/auth/react';
 import App from './App';
+import LoginPage from './components/LoginPage';
 import './index.css';
 
 let convexUrl = import.meta.env.VITE_CONVEX_URL;
@@ -43,9 +45,14 @@ if (container) {
   const root = createRoot(container);
   root.render(
     <React.StrictMode>
-      <ConvexProvider client={convex}>
-        <App />
-      </ConvexProvider>
+      <ConvexAuthProvider client={convex}>
+        <Authenticated>
+          <App />
+        </Authenticated>
+        <Unauthenticated>
+          <LoginPage />
+        </Unauthenticated>
+      </ConvexAuthProvider>
     </React.StrictMode>
   );
 }

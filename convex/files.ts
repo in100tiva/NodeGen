@@ -40,15 +40,11 @@ export const uploadFile = action({
     storageId: v.id("_storage"),
   },
   handler: async (ctx, args): Promise<Id<"files">> => {
-    // TODO: Reativar autenticação quando configurada no Convex Dashboard
-    // const identity = await ctx.auth.getUserIdentity();
-    // if (!identity) {
-    //   throw new Error("Not authenticated");
-    // }
-    // const userId = identity.tokenIdentifier;
-    
-    // Temporário: usar um userId fixo para desenvolvimento
-    const userId = "dev-user-123";
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+    const userId = identity.tokenIdentifier;
 
     const fileId: Id<"files"> = await ctx.runMutation(api.files.createFileRecord, {
       userId,
@@ -67,15 +63,11 @@ export const uploadFile = action({
 export const deleteFile = mutation({
   args: { id: v.id("files") },
   handler: async (ctx, args) => {
-    // TODO: Reativar autenticação quando configurada no Convex Dashboard
-    // const identity = await ctx.auth.getUserIdentity();
-    // if (!identity) {
-    //   throw new Error("Not authenticated");
-    // }
-    // const userId = identity.tokenIdentifier;
-    
-    // Temporário: usar um userId fixo para desenvolvimento
-    const userId = "dev-user-123";
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+    const userId = identity.tokenIdentifier;
     const file = await ctx.db.get(args.id);
 
     if (!file) {
@@ -108,15 +100,11 @@ export const getFileUrl = query({
     if (!args.id) {
       return null;
     }
-    // TODO: Reativar autenticação quando configurada no Convex Dashboard
-    // const identity = await ctx.auth.getUserIdentity();
-    // if (!identity) {
-    //   throw new Error("Not authenticated");
-    // }
-    // const userId = identity.tokenIdentifier;
-    
-    // Temporário: usar um userId fixo para desenvolvimento
-    const userId = "dev-user-123";
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+    const userId = identity.tokenIdentifier;
     const file = await ctx.db.get(args.id);
 
     if (!file) {
@@ -134,15 +122,11 @@ export const getFileUrl = query({
 export const listFiles = query({
   args: { workflowId: v.optional(v.id("workflows")) },
   handler: async (ctx, args) => {
-    // TODO: Reativar autenticação quando configurada no Convex Dashboard
-    // const identity = await ctx.auth.getUserIdentity();
-    // if (!identity) {
-    //   return [];
-    // }
-    // const userId = identity.tokenIdentifier;
-    
-    // Temporário: usar um userId fixo para desenvolvimento
-    const userId = "dev-user-123";
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return [];
+    }
+    const userId = identity.tokenIdentifier;
 
     if (args.workflowId) {
       return await ctx.db

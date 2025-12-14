@@ -14,15 +14,11 @@ export const createWorkflow = mutation({
     }),
   },
   handler: async (ctx, args) => {
-    // TODO: Reativar autenticação quando configurada no Convex Dashboard
-    // const identity = await ctx.auth.getUserIdentity();
-    // if (!identity) {
-    //   throw new Error("Not authenticated");
-    // }
-    // const userId = identity.tokenIdentifier;
-    
-    // Temporário: usar um userId fixo para desenvolvimento
-    const userId = "dev-user-123";
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+    const userId = identity.tokenIdentifier;
 
     // Se for o primeiro workflow, marcar como default
     const existingWorkflows = await ctx.db
@@ -65,15 +61,11 @@ export const updateWorkflow = mutation({
   },
   handler: async (ctx, args) => {
     try {
-      // TODO: Reativar autenticação quando configurada no Convex Dashboard
-      // const identity = await ctx.auth.getUserIdentity();
-      // if (!identity) {
-      //   throw new Error("Not authenticated");
-      // }
-      // const userId = identity.tokenIdentifier;
-      
-      // Temporário: usar um userId fixo para desenvolvimento
-      const userId = "dev-user-123";
+      const identity = await ctx.auth.getUserIdentity();
+      if (!identity) {
+        throw new Error("Not authenticated");
+      }
+      const userId = identity.tokenIdentifier;
       const workflow = await ctx.db.get(args.id);
 
       if (!workflow) {
@@ -320,25 +312,11 @@ export const updateWorkflowWithJsonNodes = mutation({
         workflowUserId: workflow.userId
       });
       
-      // Autenticação: tentar obter userId do contexto, mas usar fallback se não configurado
-      let userId: string;
-      try {
-        // Tentar obter autenticação se estiver configurada
-        // @ts-ignore - ctx.auth pode não estar disponível se auth não estiver configurado
-        const identity = ctx.auth ? await ctx.auth.getUserIdentity() : null;
-        if (identity) {
-          userId = identity.tokenIdentifier;
-          console.log('[DEBUG] Usuário autenticado:', userId);
-        } else {
-          // Fallback: usar userId fixo para desenvolvimento
-          userId = "dev-user-123";
-          console.log('[DEBUG] Autenticação não configurada, usando userId fixo:', userId);
-        }
-      } catch (authError: any) {
-        // Se houver erro ao tentar obter autenticação, usar fallback
-        console.warn('[WARN] Erro ao obter autenticação, usando fallback:', authError?.message);
-        userId = "dev-user-123";
+      const identity = await ctx.auth.getUserIdentity();
+      if (!identity) {
+        throw new Error("Not authenticated");
       }
+      const userId = identity.tokenIdentifier;
       
       // Verificar autorização
       if (workflow.userId !== userId) {
@@ -723,15 +701,11 @@ export const updateWorkflowWithJsonNodes = mutation({
 export const deleteWorkflow = mutation({
   args: { id: v.id("workflows") },
   handler: async (ctx, args) => {
-    // TODO: Reativar autenticação quando configurada no Convex Dashboard
-    // const identity = await ctx.auth.getUserIdentity();
-    // if (!identity) {
-    //   throw new Error("Not authenticated");
-    // }
-    // const userId = identity.tokenIdentifier;
-    
-    // Temporário: usar um userId fixo para desenvolvimento
-    const userId = "dev-user-123";
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+    const userId = identity.tokenIdentifier;
     const workflow = await ctx.db.get(args.id);
 
     if (!workflow) {
@@ -748,15 +722,11 @@ export const deleteWorkflow = mutation({
 
 export const listWorkflows = query({
   handler: async (ctx) => {
-    // TODO: Reativar autenticação quando configurada no Convex Dashboard
-    // const identity = await ctx.auth.getUserIdentity();
-    // if (!identity) {
-    //   return [];
-    // }
-    // const userId = identity.tokenIdentifier;
-    
-    // Temporário: usar um userId fixo para desenvolvimento
-    const userId = "dev-user-123";
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return [];
+    }
+    const userId = identity.tokenIdentifier;
 
     const workflows = await ctx.db
       .query("workflows")
@@ -771,15 +741,11 @@ export const listWorkflows = query({
 export const getWorkflow = query({
   args: { id: v.id("workflows") },
   handler: async (ctx, args) => {
-    // TODO: Reativar autenticação quando configurada no Convex Dashboard
-    // const identity = await ctx.auth.getUserIdentity();
-    // if (!identity) {
-    //   throw new Error("Not authenticated");
-    // }
-    // const userId = identity.tokenIdentifier;
-    
-    // Temporário: usar um userId fixo para desenvolvimento
-    const userId = "dev-user-123";
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+    const userId = identity.tokenIdentifier;
     const workflow = await ctx.db.get(args.id);
 
     if (!workflow) {
@@ -797,15 +763,11 @@ export const getWorkflow = query({
 export const setDefaultWorkflow = mutation({
   args: { id: v.id("workflows") },
   handler: async (ctx, args) => {
-    // TODO: Reativar autenticação quando configurada no Convex Dashboard
-    // const identity = await ctx.auth.getUserIdentity();
-    // if (!identity) {
-    //   throw new Error("Not authenticated");
-    // }
-    // const userId = identity.tokenIdentifier;
-    
-    // Temporário: usar um userId fixo para desenvolvimento
-    const userId = "dev-user-123";
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+    const userId = identity.tokenIdentifier;
     const workflow = await ctx.db.get(args.id);
 
     if (!workflow) {
