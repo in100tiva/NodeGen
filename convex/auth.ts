@@ -36,8 +36,14 @@ if (!siteUrl) {
   );
 }
 
+// Configurar convexAuth
+// O Convex Auth lê automaticamente SITE_URL de process.env.SITE_URL
+// IMPORTANTE: SITE_URL deve estar configurada no Convex Dashboard
+// Se SITE_URL não estiver configurada, o signIn falhará com "Server Error"
 export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
   providers: providers.length > 0 ? providers : [],
+  // SITE_URL é lido automaticamente de process.env.SITE_URL pelo Convex Auth
+  // Não precisa ser passado explicitamente na configuração
 });
 
 // Query para verificar se as variáveis de ambiente estão configuradas
@@ -79,59 +85,42 @@ export const getCurrentUser = query({
 
 // Action para verificar configuração de autenticação
 // Usa valores já carregados no módulo (mais confiável que process.env em actions)
+// Esta action é opcional e não crítica - se falhar, não deve bloquear o login
 export const checkAuthConfig = action({
   handler: async () => {
+    // Usar valores já carregados no topo do módulo
+    // Esses valores são carregados quando o módulo é importado
+    const hasClientId = !!clientId;
+    const hasClientSecret = !!clientSecret;
+    const hasSiteUrl = !!siteUrl;
+    
+    // Tentar obter CONVEX_SITE_URL do process.env (se disponível)
+    let convexSiteUrl: string | null = null;
     try {
-      // Usar valores já carregados no topo do módulo
-      // Esses valores são carregados quando o módulo é importado
-      const hasClientId = !!clientId;
-      const hasClientSecret = !!clientSecret;
-      const hasSiteUrl = !!siteUrl;
-      
-      // Tentar obter CONVEX_SITE_URL do process.env (se disponível)
-      let convexSiteUrl: string | null = null;
-      try {
+      // Actions podem acessar process.env, mas pode falhar em alguns contextos
+      if (typeof process !== 'undefined' && process.env) {
         convexSiteUrl = process.env.CONVEX_SITE_URL || null;
-      } catch (e) {
-        // Ignorar se não conseguir acessar
       }
-      
-      return {
-        hasClientId,
-        hasClientSecret,
-        hasSiteUrl,
-        hasConvexSiteUrl: !!convexSiteUrl,
-        siteUrl: siteUrl || null,
-        convexSiteUrl,
-        callbackUrl: convexSiteUrl 
-          ? `${convexSiteUrl}/api/auth/callback/github`
-          : null,
-        configured: !!(hasClientId && hasClientSecret && hasSiteUrl),
-        missing: [
-          ...(!hasClientId ? ["AUTH_GITHUB_ID"] : []),
-          ...(!hasClientSecret ? ["AUTH_GITHUB_SECRET"] : []),
-          ...(!hasSiteUrl ? ["SITE_URL"] : []),
-        ],
-      };
-    } catch (error: any) {
-      // Em caso de erro, retornar informações básicas
-      console.error('Erro ao verificar configuração:', error);
-      return {
-        hasClientId: !!clientId,
-        hasClientSecret: !!clientSecret,
-        hasSiteUrl: !!siteUrl,
-        hasConvexSiteUrl: false,
-        siteUrl: siteUrl || null,
-        convexSiteUrl: null,
-        callbackUrl: null,
-        configured: !!(clientId && clientSecret && siteUrl),
-        missing: [
-          ...(!clientId ? ["AUTH_GITHUB_ID"] : []),
-          ...(!clientSecret ? ["AUTH_GITHUB_SECRET"] : []),
-          ...(!siteUrl ? ["SITE_URL"] : []),
-        ],
-        error: error?.message || String(error),
-      };
+    } catch (e) {
+      // Ignorar se não conseguir acessar
     }
+    
+    return {
+      hasClientId,
+      hasClientSecret,
+      hasSiteUrl,
+      hasConvexSiteUrl: !!convexSiteUrl,
+      siteUrl: siteUrl || null,
+      convexSiteUrl,
+      callbackUrl: convexSiteUrl 
+        ? `${convexSiteUrl}/api/auth/callback/github`
+        : null,
+      configured: !!(hasClientId && hasClientSecret && hasSiteUrl),
+      missing: [
+        ...(!hasClientId ? ["AUTH_GITHUB_ID"] : []),
+        ...(!hasClientSecret ? ["AUTH_GITHUB_SECRET"] : []),
+        ...(!hasSiteUrl ? ["SITE_URL"] : []),
+      ],
+    };
   },
 });

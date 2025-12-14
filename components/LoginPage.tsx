@@ -12,40 +12,41 @@ const LoginPage: React.FC = () => {
   const [configError, setConfigError] = useState<string | null>(null);
   const [isCheckingConfig, setIsCheckingConfig] = useState(true);
 
-  // Verificar configuração ao carregar
+  // Verificar configuração ao carregar (opcional, não bloqueia se falhar)
+  // DESABILITADO TEMPORARIAMENTE devido a problemas com a action
+  // useEffect(() => {
+  //   const verifyConfig = async () => {
+  //     try {
+  //       setIsCheckingConfig(true);
+  //       const config = await checkAuthConfig();
+  //       
+  //       if (!config.configured) {
+  //         const missingVars = config.missing.join(', ');
+  //         setConfigError(
+  //           `Configuração incompleta: faltam as variáveis ${missingVars}. ` +
+  //           `Configure em: https://dashboard.convex.dev → Settings → Environment Variables`
+  //         );
+  //       } else {
+  //         setConfigError(null);
+  //       }
+  //     } catch (err) {
+  //       // Silenciosamente ignorar erros de verificação
+  //       console.warn('Verificação de configuração não disponível (não crítico)');
+  //       setConfigError(null);
+  //     } finally {
+  //       setIsCheckingConfig(false);
+  //     }
+  //   };
+  //
+  //   verifyConfig().catch(() => {
+  //     setIsCheckingConfig(false);
+  //   });
+  // }, [checkAuthConfig]);
+  
+  // Inicializar como não verificando
   useEffect(() => {
-    const verifyConfig = async () => {
-      try {
-        setIsCheckingConfig(true);
-        const config = await checkAuthConfig();
-        
-        // Se houver erro na resposta, não mostrar erro crítico
-        if (config.error) {
-          console.warn('Aviso ao verificar configuração:', config.error);
-          // Não definir configError, apenas logar o aviso
-        }
-        
-        if (!config.configured) {
-          const missingVars = config.missing.join(', ');
-          setConfigError(
-            `Configuração incompleta: faltam as variáveis ${missingVars}. ` +
-            `Configure em: https://dashboard.convex.dev → Settings → Environment Variables`
-          );
-        } else {
-          setConfigError(null);
-        }
-      } catch (err) {
-        console.error('Erro ao verificar configuração:', err);
-        // Não mostrar erro crítico, apenas logar
-        // A verificação é opcional e não deve bloquear o login
-        setConfigError(null);
-      } finally {
-        setIsCheckingConfig(false);
-      }
-    };
-
-    verifyConfig();
-  }, [checkAuthConfig]);
+    setIsCheckingConfig(false);
+  }, []);
 
   const handleGitHubSignIn = async () => {
     setIsLoading(true);
