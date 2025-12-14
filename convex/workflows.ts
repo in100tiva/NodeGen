@@ -527,59 +527,79 @@ export const updateWorkflowWithJsonNodes = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    console.error('[ALTERNATIVE] updateWorkflowWithJsonNodes called with:', {
+    console.error('[ALTERNATIVE HANDLER ENTRY] updateWorkflowWithJsonNodes called with:', {
       id: String(args.id),
       hasNodesJson: args.nodesJson !== undefined,
+      nodesJsonLength: args.nodesJson?.length || 0,
       hasEdgesJson: args.edgesJson !== undefined,
-      hasSettings: args.settings !== undefined
+      edgesJsonLength: args.edgesJson?.length || 0,
+      hasSettings: args.settings !== undefined,
+      argsKeys: Object.keys(args)
     });
     
-    const workflow = await ctx.db.get(args.id);
-    if (!workflow) {
-      throw new Error("Workflow not found");
-    }
-    
-    const updateData: any = {
-      updatedAt: Date.now(),
-    };
-    
-    // Parse nodes de JSON string
-    if (args.nodesJson !== undefined) {
-      try {
-        const parsedNodes = JSON.parse(args.nodesJson);
-        if (Array.isArray(parsedNodes)) {
-          updateData.nodes = parsedNodes;
-        } else {
-          throw new Error('nodesJson não é um array válido após parse');
-        }
-      } catch (e: any) {
-        console.error('[ALTERNATIVE] Erro ao parsear nodesJson:', e);
-        throw new Error(`Erro ao parsear nodesJson: ${e.message}`);
+    try {
+      const workflow = await ctx.db.get(args.id);
+      if (!workflow) {
+        throw new Error("Workflow not found");
       }
-    }
-    
-    // Parse edges de JSON string
-    if (args.edgesJson !== undefined) {
-      try {
-        const parsedEdges = JSON.parse(args.edgesJson);
-        if (Array.isArray(parsedEdges)) {
-          updateData.edges = parsedEdges;
-        } else {
-          throw new Error('edgesJson não é um array válido após parse');
+      
+      console.error('[ALTERNATIVE] Workflow found, preparing updateData');
+      
+      const updateData: any = {
+        updatedAt: Date.now(),
+      };
+      
+      // Parse nodes de JSON string
+      if (args.nodesJson !== undefined) {
+        try {
+          console.error('[ALTERNATIVE] Parsing nodesJson, length:', args.nodesJson.length);
+          const parsedNodes = JSON.parse(args.nodesJson);
+          console.error('[ALTERNATIVE] Parsed nodes, isArray:', Array.isArray(parsedNodes), 'length:', parsedNodes?.length);
+          if (Array.isArray(parsedNodes)) {
+            updateData.nodes = parsedNodes;
+            console.error('[ALTERNATIVE] nodes added to updateData, count:', parsedNodes.length);
+          } else {
+            throw new Error('nodesJson não é um array válido após parse');
+          }
+        } catch (e: any) {
+          console.error('[ALTERNATIVE] Erro ao parsear nodesJson:', e);
+          throw new Error(`Erro ao parsear nodesJson: ${e.message}`);
         }
-      } catch (e: any) {
-        console.error('[ALTERNATIVE] Erro ao parsear edgesJson:', e);
-        throw new Error(`Erro ao parsear edgesJson: ${e.message}`);
       }
+      
+      // Parse edges de JSON string
+      if (args.edgesJson !== undefined) {
+        try {
+          console.error('[ALTERNATIVE] Parsing edgesJson, length:', args.edgesJson.length);
+          const parsedEdges = JSON.parse(args.edgesJson);
+          console.error('[ALTERNATIVE] Parsed edges, isArray:', Array.isArray(parsedEdges), 'length:', parsedEdges?.length);
+          if (Array.isArray(parsedEdges)) {
+            updateData.edges = parsedEdges;
+            console.error('[ALTERNATIVE] edges added to updateData, count:', parsedEdges.length);
+          } else {
+            throw new Error('edgesJson não é um array válido após parse');
+          }
+        } catch (e: any) {
+          console.error('[ALTERNATIVE] Erro ao parsear edgesJson:', e);
+          throw new Error(`Erro ao parsear edgesJson: ${e.message}`);
+        }
+      }
+      
+      // Settings
+      if (args.settings !== undefined) {
+        updateData.settings = args.settings;
+        console.error('[ALTERNATIVE] settings added to updateData');
+      }
+      
+      console.error('[ALTERNATIVE] Before db.patch, updateData keys:', Object.keys(updateData));
+      await ctx.db.patch(args.id, updateData);
+      console.error('[ALTERNATIVE] db.patch succeeded');
+      return args.id;
+    } catch (error: any) {
+      console.error('[ALTERNATIVE ERROR]', error);
+      console.error('[ALTERNATIVE ERROR] Stack:', error.stack);
+      throw error;
     }
-    
-    // Settings
-    if (args.settings !== undefined) {
-      updateData.settings = args.settings;
-    }
-    
-    await ctx.db.patch(args.id, updateData);
-    return args.id;
   },
 });
 

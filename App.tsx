@@ -464,10 +464,20 @@ export default function App() {
           if (updateArgs.settings !== undefined) {
             alternativeArgs.settings = updateArgs.settings;
           }
+          // #region agent log
+          fetch('http://127.0.0.1:7243/ingest/a7576830-f069-47f1-89e2-c0c545ca634b', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'F',location:'App.tsx:beforeAlternativeMutation',message:'Calling updateWorkflowWithJsonNodes',data:{alternativeArgsKeys:Object.keys(alternativeArgs),nodesJsonLength:alternativeArgs.nodesJson?.length,hasEdgesJson:!!alternativeArgs.edgesJson,hasSettings:!!alternativeArgs.settings},timestamp:Date.now()})}).catch(()=>{});
+          // #endregion
+          console.log('[DEBUG FRONTEND] Calling updateWorkflowWithJsonNodes with:', alternativeArgs);
           await updateWorkflowWithJsonNodes(alternativeArgs);
+          console.log('[DEBUG FRONTEND] updateWorkflowWithJsonNodes succeeded');
         } else {
           // Se não houver nodes, usar mutation normal
+          // #region agent log
+          fetch('http://127.0.0.1:7243/ingest/a7576830-f069-47f1-89e2-c0c545ca634b', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'F',location:'App.tsx:beforeNormalMutation',message:'Calling updateWorkflow (no nodes)',data:{updateArgsKeys:Object.keys(updateArgs)},timestamp:Date.now()})}).catch(()=>{});
+          // #endregion
+          console.log('[DEBUG FRONTEND] Calling updateWorkflow (no nodes) with:', updateArgs);
           await updateWorkflow(updateArgs);
+          console.log('[DEBUG FRONTEND] updateWorkflow succeeded');
         }
       } catch (callError: any) {
         // #region agent log
