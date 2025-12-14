@@ -83,24 +83,25 @@ export const updateWorkflow = mutation({
       throw new Error("Not authorized");
     }
 
+    // TODO: Implementar log de mudanças quando changeHistory estiver disponível
     // Detectar mudanças para log
-    if (args.nodes !== undefined && JSON.stringify(workflow.nodes) !== JSON.stringify(args.nodes)) {
-      await ctx.runMutation(api.changeHistory.logChange, {
-        workflowId: args.id,
-        action: "update",
-        targetType: "workflow",
-        changes: { nodes: { from: workflow.nodes, to: args.nodes } },
-      });
-    }
+    // if (args.nodes !== undefined && JSON.stringify(workflow.nodes) !== JSON.stringify(args.nodes)) {
+    //   await ctx.runMutation(api.changeHistory.logChange, {
+    //     workflowId: args.id,
+    //     action: "update",
+    //     targetType: "workflow",
+    //     changes: { nodes: { from: workflow.nodes, to: args.nodes } },
+    //   });
+    // }
 
-    if (args.edges !== undefined && JSON.stringify(workflow.edges) !== JSON.stringify(args.edges)) {
-      await ctx.runMutation(api.changeHistory.logChange, {
-        workflowId: args.id,
-        action: "update",
-        targetType: "workflow",
-        changes: { edges: { from: workflow.edges, to: args.edges } },
-      });
-    }
+    // if (args.edges !== undefined && JSON.stringify(workflow.edges) !== JSON.stringify(args.edges)) {
+    //   await ctx.runMutation(api.changeHistory.logChange, {
+    //     workflowId: args.id,
+    //     action: "update",
+    //     targetType: "workflow",
+    //     changes: { edges: { from: workflow.edges, to: args.edges } },
+    //   });
+    // }
 
     await ctx.db.patch(args.id, {
       ...(args.name !== undefined && { name: args.name }),
@@ -111,33 +112,34 @@ export const updateWorkflow = mutation({
       updatedAt: Date.now(),
     });
 
+    // TODO: Implementar auto-save de versão quando versions estiver disponível
     // Auto-save de versão se solicitado
-    if (args.createVersion && (args.nodes !== undefined || args.edges !== undefined)) {
-      const versions = await ctx.db
-        .query("workflowVersions")
-        .withIndex("by_workflow", (q) => q.eq("workflowId", args.id))
-        .order("desc")
-        .take(1);
+    // if (args.createVersion && (args.nodes !== undefined || args.edges !== undefined)) {
+    //   const versions = await ctx.db
+    //     .query("workflowVersions")
+    //     .withIndex("by_workflow", (q) => q.eq("workflowId", args.id))
+    //     .order("desc")
+    //     .take(1);
 
-      const lastVersion = versions[0];
-      let nextVersion = "1.0.0";
+    //   const lastVersion = versions[0];
+    //   let nextVersion = "1.0.0";
 
-      if (lastVersion) {
-        const parts = lastVersion.version.split(".");
-        const minor = parseInt(parts[1] || "0") + 1;
-        nextVersion = `${parts[0]}.${minor}.0`;
-      }
+    //   if (lastVersion) {
+    //     const parts = lastVersion.version.split(".");
+    //     const minor = parseInt(parts[1] || "0") + 1;
+    //     nextVersion = `${parts[0]}.${minor}.0`;
+    //   }
 
-      await ctx.runMutation(api.versions.createVersion, {
-        workflowId: args.id,
-        version: nextVersion,
-        nodes: args.nodes || workflow.nodes,
-        edges: args.edges || workflow.edges,
-        settings: args.settings || workflow.settings,
-        description: "Auto-save",
-        setAsCurrent: false,
-      });
-    }
+    //   await ctx.runMutation(api.versions.createVersion, {
+    //     workflowId: args.id,
+    //     version: nextVersion,
+    //     nodes: args.nodes || workflow.nodes,
+    //     edges: args.edges || workflow.edges,
+    //     settings: args.settings || workflow.settings,
+    //     description: "Auto-save",
+    //     setAsCurrent: false,
+    //   });
+    // }
 
     return args.id;
   },
