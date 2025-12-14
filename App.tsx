@@ -95,18 +95,84 @@ export default function App() {
 
     setSaveStatus('saving');
     try {
+      // #region agent log
+      const logData = {
+        sessionId: 'debug-session',
+        runId: 'run1',
+        hypothesisId: 'A',
+        location: 'App.tsx:98',
+        message: 'Calling updateWorkflow - args before call',
+        data: {
+          workflowId: currentWorkflow._id,
+          nodesCount: nodes?.length || 0,
+          edgesCount: edges?.length || 0,
+          settings: settings ? {
+            hasOpenRouterKey: !!settings.openRouterKey,
+            openRouterKeyType: typeof settings.openRouterKey,
+            theme: settings.theme,
+            themeType: typeof settings.theme
+          } : null,
+          nodesSample: nodes?.slice(0, 2),
+          edgesSample: edges?.slice(0, 2)
+        },
+        timestamp: Date.now()
+      };
+      fetch('http://127.0.0.1:7243/ingest/a7576830-f069-47f1-89e2-c0c545ca634b', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData)}).catch(()=>{});
+      // #endregion
+
+      // Normalizar settings para garantir valores válidos antes de enviar
+      const normalizedSettings = {
+        openRouterKey: settings?.openRouterKey ?? '',
+        theme: (settings?.theme === 'dark' || settings?.theme === 'light') ? settings.theme : 'dark',
+      };
+
+      // Validar e limpar nodes/edges para garantir serialização
+      const cleanNodes = nodes ? JSON.parse(JSON.stringify(nodes)) : nodes;
+      const cleanEdges = edges ? JSON.parse(JSON.stringify(edges)) : edges;
+
+      // #region agent log
+      const logData2 = {
+        sessionId: 'debug-session',
+        runId: 'run1',
+        hypothesisId: 'B',
+        location: 'App.tsx:135',
+        message: 'Before updateWorkflow call - cleaned data',
+        data: {
+          workflowId: currentWorkflow._id,
+          nodesCount: cleanNodes?.length || 0,
+          edgesCount: cleanEdges?.length || 0,
+          nodesSerializable: cleanNodes ? (() => { try { JSON.stringify(cleanNodes); return true; } catch { return false; } })() : null,
+          edgesSerializable: cleanEdges ? (() => { try { JSON.stringify(cleanEdges); return true; } catch { return false; } })() : null,
+          settings: normalizedSettings,
+          nodesSample: cleanNodes?.slice(0, 1),
+          edgesSample: cleanEdges?.slice(0, 1)
+        },
+        timestamp: Date.now()
+      };
+      fetch('http://127.0.0.1:7243/ingest/a7576830-f069-47f1-89e2-c0c545ca634b', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData2)}).catch(()=>{});
+      // #endregion
+
       await updateWorkflow({
         id: currentWorkflow._id,
-        nodes,
-        edges,
-        settings,
+        nodes: cleanNodes,
+        edges: cleanEdges,
+        settings: normalizedSettings,
       });
+
+      // #region agent log
+      fetch('http://127.0.0.1:7243/ingest/a7576830-f069-47f1-89e2-c0c545ca634b', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'A',location:'App.tsx:104',message:'updateWorkflow succeeded',data:{},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
+
       setSaveStatus('saved');
       // Resetar para idle após 2 segundos
       setTimeout(() => {
         setSaveStatus('idle');
       }, 2000);
-    } catch (error) {
+    } catch (error: any) {
+      // #region agent log
+      fetch('http://127.0.0.1:7243/ingest/a7576830-f069-47f1-89e2-c0c545ca634b', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'A',location:'App.tsx:109',message:'updateWorkflow error caught',data:{errorMessage:error?.message,errorString:String(error),errorStack:error?.stack},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
+
       console.error('Error saving workflow:', error);
       setSaveStatus('error');
       // Resetar para idle após 3 segundos em caso de erro

@@ -64,6 +64,37 @@ export const updateWorkflow = mutation({
     createVersion: v.optional(v.boolean()), // Auto-save de versão
   },
   handler: async (ctx, args) => {
+    // #region agent log
+    const logEntry1 = {
+      sessionId: 'debug-session',
+      runId: 'run1',
+      hypothesisId: 'A',
+      location: 'convex/workflows.ts:66',
+      message: 'updateWorkflow handler entry - args received',
+      data: {
+        id: args.id,
+        hasName: args.name !== undefined,
+        hasDescription: args.description !== undefined,
+        hasNodes: args.nodes !== undefined,
+        nodesCount: args.nodes?.length || 0,
+        hasEdges: args.edges !== undefined,
+        edgesCount: args.edges?.length || 0,
+        hasSettings: args.settings !== undefined,
+        settingsType: typeof args.settings,
+        settingsValue: args.settings ? {
+          hasOpenRouterKey: args.settings.openRouterKey !== undefined,
+          openRouterKeyType: typeof args.settings.openRouterKey,
+          openRouterKeyValue: args.settings.openRouterKey === null ? 'null' : (args.settings.openRouterKey === undefined ? 'undefined' : String(args.settings.openRouterKey).substring(0, 20)),
+          hasTheme: args.settings.theme !== undefined,
+          themeType: typeof args.settings.theme,
+          themeValue: args.settings.theme
+        } : null
+      },
+      timestamp: Date.now()
+    };
+    console.error('[DEBUG]', JSON.stringify(logEntry1));
+    // #endregion
+
     try {
       // TODO: Reativar autenticação quando configurada no Convex Dashboard
       // const identity = await ctx.auth.getUserIdentity();
@@ -75,6 +106,29 @@ export const updateWorkflow = mutation({
       // Temporário: usar um userId fixo para desenvolvimento
       const userId = "dev-user-123";
       const workflow = await ctx.db.get(args.id);
+
+      // #region agent log
+      const logEntry2 = {
+        sessionId: 'debug-session',
+        runId: 'run1',
+        hypothesisId: 'C',
+        location: 'convex/workflows.ts:77',
+        message: 'Workflow fetched from DB',
+        data: {
+          workflowExists: !!workflow,
+          workflowId: workflow?._id,
+          workflowUserId: workflow?.userId,
+          expectedUserId: userId,
+          workflowSettings: workflow?.settings ? {
+            hasOpenRouterKey: workflow.settings.openRouterKey !== undefined,
+            openRouterKeyType: typeof workflow.settings.openRouterKey,
+            theme: workflow.settings.theme
+          } : null
+        },
+        timestamp: Date.now()
+      };
+      console.error('[DEBUG]', JSON.stringify(logEntry2));
+      // #endregion
 
       if (!workflow) {
         throw new Error("Workflow not found");
@@ -107,6 +161,28 @@ export const updateWorkflow = mutation({
       // Validar e preparar settings se fornecido
       let validatedSettings = undefined;
       if (args.settings !== undefined) {
+        // #region agent log
+        const logEntry3 = {
+          sessionId: 'debug-session',
+          runId: 'run1',
+          hypothesisId: 'A',
+          location: 'convex/workflows.ts:109',
+          message: 'Before settings validation',
+          data: {
+            argsSettings: args.settings,
+            argsOpenRouterKey: args.settings.openRouterKey,
+            argsOpenRouterKeyType: typeof args.settings.openRouterKey,
+            argsOpenRouterKeyIsNull: args.settings.openRouterKey === null,
+            argsOpenRouterKeyIsUndefined: args.settings.openRouterKey === undefined,
+            argsTheme: args.settings.theme,
+            argsThemeType: typeof args.settings.theme,
+            workflowSettings: workflow.settings
+          },
+          timestamp: Date.now()
+        };
+        console.error('[DEBUG]', JSON.stringify(logEntry3));
+        // #endregion
+
         // Garantir que settings tem o formato correto
         // Se openRouterKey ou theme não estiverem presentes, usar valores do workflow atual
         const openRouterKey = args.settings.openRouterKey !== undefined 
@@ -123,6 +199,24 @@ export const updateWorkflow = mutation({
           openRouterKey: typeof openRouterKey === "string" ? openRouterKey : "",
           theme: validTheme,
         };
+
+        // #region agent log
+        const logEntry4 = {
+          sessionId: 'debug-session',
+          runId: 'run1',
+          hypothesisId: 'A',
+          location: 'convex/workflows.ts:125',
+          message: 'After settings validation',
+          data: {
+            validatedSettings,
+            openRouterKeyFinal: validatedSettings.openRouterKey,
+            openRouterKeyFinalType: typeof validatedSettings.openRouterKey,
+            themeFinal: validatedSettings.theme
+          },
+          timestamp: Date.now()
+        };
+        console.error('[DEBUG]', JSON.stringify(logEntry4));
+        // #endregion
       }
 
       // Preparar objeto de atualização
@@ -146,7 +240,40 @@ export const updateWorkflow = mutation({
         updateData.settings = validatedSettings;
       }
 
+      // #region agent log
+      const logEntry5 = {
+        sessionId: 'debug-session',
+        runId: 'run1',
+        hypothesisId: 'D',
+        location: 'convex/workflows.ts:148',
+        message: 'Before db.patch - updateData prepared',
+        data: {
+          updateDataKeys: Object.keys(updateData),
+          hasSettings: updateData.settings !== undefined,
+          settingsValue: updateData.settings,
+          nodesCount: updateData.nodes?.length,
+          edgesCount: updateData.edges?.length,
+          updateDataStringified: JSON.stringify(updateData).substring(0, 500)
+        },
+        timestamp: Date.now()
+      };
+      console.error('[DEBUG]', JSON.stringify(logEntry5));
+      // #endregion
+
       await ctx.db.patch(args.id, updateData);
+
+      // #region agent log
+      const logEntry6 = {
+        sessionId: 'debug-session',
+        runId: 'run1',
+        hypothesisId: 'D',
+        location: 'convex/workflows.ts:149',
+        message: 'After db.patch - success',
+        data: {},
+        timestamp: Date.now()
+      };
+      console.error('[DEBUG]', JSON.stringify(logEntry6));
+      // #endregion
 
       // TODO: Implementar auto-save de versão quando versions estiver disponível
       // Auto-save de versão se solicitado
@@ -179,6 +306,26 @@ export const updateWorkflow = mutation({
 
       return args.id;
     } catch (error: any) {
+      // #region agent log
+      const logEntry7 = {
+        sessionId: 'debug-session',
+        runId: 'run1',
+        hypothesisId: 'E',
+        location: 'convex/workflows.ts:181',
+        message: 'Error caught in updateWorkflow',
+        data: {
+          errorMessage: error?.message,
+          errorString: String(error),
+          errorName: error?.name,
+          errorStack: error?.stack?.substring(0, 500),
+          argsId: args.id,
+          argsKeys: Object.keys(args)
+        },
+        timestamp: Date.now()
+      };
+      console.error('[DEBUG]', JSON.stringify(logEntry7));
+      // #endregion
+
       // Log do erro para debug
       console.error("Erro em updateWorkflow:", error);
       console.error("Args recebidos:", JSON.stringify(args, null, 2));
