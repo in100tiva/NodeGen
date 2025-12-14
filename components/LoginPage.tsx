@@ -19,6 +19,12 @@ const LoginPage: React.FC = () => {
         setIsCheckingConfig(true);
         const config = await checkAuthConfig();
         
+        // Se houver erro na resposta, não mostrar erro crítico
+        if (config.error) {
+          console.warn('Aviso ao verificar configuração:', config.error);
+          // Não definir configError, apenas logar o aviso
+        }
+        
         if (!config.configured) {
           const missingVars = config.missing.join(', ');
           setConfigError(
@@ -30,7 +36,9 @@ const LoginPage: React.FC = () => {
         }
       } catch (err) {
         console.error('Erro ao verificar configuração:', err);
-        setConfigError('Não foi possível verificar a configuração do servidor.');
+        // Não mostrar erro crítico, apenas logar
+        // A verificação é opcional e não deve bloquear o login
+        setConfigError(null);
       } finally {
         setIsCheckingConfig(false);
       }

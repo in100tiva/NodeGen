@@ -77,30 +77,61 @@ export const getCurrentUser = query({
   },
 });
 
-// Action para verificar configuração de autenticação (pode acessar process.env)
+// Action para verificar configuração de autenticação
+// Usa valores já carregados no módulo (mais confiável que process.env em actions)
 export const checkAuthConfig = action({
   handler: async () => {
-    const clientId = process.env.AUTH_GITHUB_ID;
-    const clientSecret = process.env.AUTH_GITHUB_SECRET;
-    const siteUrl = process.env.SITE_URL;
-    const convexSiteUrl = process.env.CONVEX_SITE_URL;
-    
-    return {
-      hasClientId: !!clientId,
-      hasClientSecret: !!clientSecret,
-      hasSiteUrl: !!siteUrl,
-      hasConvexSiteUrl: !!convexSiteUrl,
-      siteUrl: siteUrl || null,
-      convexSiteUrl: convexSiteUrl || null,
-      callbackUrl: convexSiteUrl 
-        ? `${convexSiteUrl}/api/auth/callback/github`
-        : null,
-      configured: !!(clientId && clientSecret && siteUrl),
-      missing: [
-        ...(!clientId ? ["AUTH_GITHUB_ID"] : []),
-        ...(!clientSecret ? ["AUTH_GITHUB_SECRET"] : []),
-        ...(!siteUrl ? ["SITE_URL"] : []),
-      ],
-    };
+    try {
+      // Usar valores já carregados no topo do módulo
+      // Esses valores são carregados quando o módulo é importado
+      const hasClientId = !!clientId;
+      const hasClientSecret = !!clientSecret;
+      const hasSiteUrl = !!siteUrl;
+      
+      // Tentar obter CONVEX_SITE_URL do process.env (se disponível)
+      let convexSiteUrl: string | null = null;
+      try {
+        convexSiteUrl = process.env.CONVEX_SITE_URL || null;
+      } catch (e) {
+        // Ignorar se não conseguir acessar
+      }
+      
+      return {
+        hasClientId,
+        hasClientSecret,
+        hasSiteUrl,
+        hasConvexSiteUrl: !!convexSiteUrl,
+        siteUrl: siteUrl || null,
+        convexSiteUrl,
+        callbackUrl: convexSiteUrl 
+          ? `${convexSiteUrl}/api/auth/callback/github`
+          : null,
+        configured: !!(hasClientId && hasClientSecret && hasSiteUrl),
+        missing: [
+          ...(!hasClientId ? ["AUTH_GITHUB_ID"] : []),
+          ...(!hasClientSecret ? ["AUTH_GITHUB_SECRET"] : []),
+          ...(!hasSiteUrl ? ["SITE_URL"] : []),
+        ],
+      };
+    } catch (error: any) {
+      // Em caso de erro, retornar informações básicas
+      console.error('Erro ao verificar configuração:', error);
+      return {
+        hasClientId: !!clientId,
+        hasClientSecret: !!clientSecret,
+        hasSiteUrl: !!siteUrl,
+        hasConvexSiteUrl: false,
+        siteUrl: siteUrl || null,
+        convexSiteUrl: null,
+        callbackUrl: null,
+        configured: !!(clientId && clientSecret && siteUrl),
+        missing: [
+          ...(!clientId ? ["AUTH_GITHUB_ID"] : []),
+          ...(!clientSecret ? ["AUTH_GITHUB_SECRET"] : []),
+          ...(!siteUrl ? ["SITE_URL"] : []),
+        ],
+        error: error?.message || String(error),
+      };
+    }
   },
 });
