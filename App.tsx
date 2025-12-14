@@ -170,78 +170,46 @@ export default function App() {
             throw new Error('Serialização de nodes não retornou um array');
           }
           // Validar estrutura de cada node para garantir compatibilidade com Convex
+          // CRIAR estrutura mínima e limpa para evitar problemas de validação
+          const minimalNodes: any[] = [];
           for (const node of cleanNodes) {
-            // Garantir que id é string
-            if (node.id !== undefined && typeof node.id !== 'string') {
-              node.id = String(node.id);
-            }
-            // Garantir que type é string
-            if (node.type !== undefined && typeof node.type !== 'string') {
-              node.type = String(node.type);
-            }
-            // Garantir que position é objeto válido
-            if (!node.position || typeof node.position !== 'object') {
-              node.position = { x: 0, y: 0 };
-            } else {
-              node.position = {
-                x: typeof node.position.x === 'number' ? node.position.x : 0,
-                y: typeof node.position.y === 'number' ? node.position.y : 0
-              };
-            }
-            // Garantir que data é objeto e limpar valores inválidos
-            // Simplificar node.data para garantir compatibilidade com Convex
-            // REMOVER objetos aninhados que podem causar problemas na validação
-            if (!node.data || typeof node.data !== 'object') {
-              node.data = { label: '' };
-            } else {
-              // Limpar node.data para garantir que todos os valores são tipos primitivos
-              // NÃO incluir objetos aninhados - apenas strings, numbers, booleans
-              const cleanedData: any = {};
+            // Criar node mínimo apenas com campos essenciais
+            const minimalNode: any = {
+              id: String(node.id || ''),
+              type: String(node.type || ''),
+              position: {
+                x: typeof node.position?.x === 'number' ? node.position.x : 0,
+                y: typeof node.position?.y === 'number' ? node.position.y : 0
+              },
+              data: {},
+              inputs: Array.isArray(node.inputs) ? node.inputs.map(String) : [],
+              outputs: Array.isArray(node.outputs) ? node.outputs.map(String) : []
+            };
+            
+            // Copiar apenas campos primitivos de node.data
+            if (node.data && typeof node.data === 'object') {
               for (const key in node.data) {
                 const value = node.data[key];
                 // Só incluir valores primitivos (string, number, boolean)
-                // REMOVER objetos aninhados completamente
+                // REMOVER completamente objetos e arrays aninhados
                 if (value !== undefined && value !== null && typeof value !== 'function') {
                   if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
-                    cleanedData[key] = value;
-                  } else if (typeof value === 'object') {
-                    // Objetos aninhados podem causar problemas - converter para string ou remover
-                    // Se for um objeto simples (não array), tentar converter para string
-                    if (Array.isArray(value)) {
-                      // Arrays podem causar problemas - converter para string JSON
-                      try {
-                        cleanedData[key] = JSON.stringify(value);
-                      } catch (e) {
-                        // Se falhar, remover
-                      }
-                    } else {
-                      // Objetos aninhados - converter para string JSON ou remover
-                      try {
-                        cleanedData[key] = JSON.stringify(value);
-                      } catch (e) {
-                        // Se falhar, remover
-                      }
-                    }
-                  } else {
-                    // Outros tipos, converter para string
-                    cleanedData[key] = String(value);
+                    minimalNode.data[key] = value;
                   }
+                  // Ignorar objetos e arrays - não incluir em node.data
                 }
               }
-              // Garantir que label sempre existe
-              if (!cleanedData.label) {
-                cleanedData.label = '';
-              }
-              node.data = cleanedData;
             }
-            // Garantir que inputs e outputs são arrays
-            if (!Array.isArray(node.inputs)) {
-              node.inputs = [];
+            
+            // Garantir que label sempre existe
+            if (!minimalNode.data.label) {
+              minimalNode.data.label = String(node.data?.label || '');
             }
-            if (!Array.isArray(node.outputs)) {
-              node.outputs = [];
-            }
+            
+            minimalNodes.push(minimalNode);
           }
+          // Substituir cleanNodes pela versão mínima
+          cleanNodes = minimalNodes;
         } catch (e) {
           console.error('Erro ao serializar nodes:', e);
           // Se falhar, não enviar nodes (deixar como está no banco)
