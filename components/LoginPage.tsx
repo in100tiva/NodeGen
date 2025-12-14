@@ -1,14 +1,11 @@
 import React, { useState } from 'react';
 import { useAuthActions } from '@convex-dev/auth/react';
-import { useQuery } from 'convex/react';
-import { api } from '../convex/_generated/api';
 import { IconGitHub, IconAlertCircle, IconCheck } from './Icons';
 
 const LoginPage: React.FC = () => {
   const { signIn } = useAuthActions();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const authConfig = useQuery(api.auth.checkAuthConfig) ?? null;
 
   const handleGitHubSignIn = async () => {
     setIsLoading(true);
@@ -65,18 +62,18 @@ const LoginPage: React.FC = () => {
                       <p className="text-xs text-red-300/80 mb-3">
                         A URL de callback no GitHub OAuth App não corresponde à URL do Convex.
                       </p>
-                      {authConfig?.callbackUrl && authConfig.callbackUrl !== "não disponível" ? (
-                        <div className="mt-3 p-3 bg-zinc-800/50 rounded border border-zinc-700">
-                          <p className="text-xs text-zinc-400 mb-2">Configure esta URL no GitHub OAuth App:</p>
-                          <code className="text-xs text-emerald-400 break-all font-mono">
-                            {authConfig.callbackUrl}
-                          </code>
-                        </div>
-                      ) : (
-                        <p className="text-xs text-zinc-400">
-                          Verifique a documentação: CORRIGIR_REDIRECT_URI_GITHUB.md
+                      <div className="mt-3 p-3 bg-zinc-800/50 rounded border border-zinc-700">
+                        <p className="text-xs text-zinc-400 mb-2">A URL de callback deve ser:</p>
+                        <code className="text-xs text-emerald-400 break-all font-mono">
+                          https://wry-avocet-85.convex.site/api/auth/callback/github
+                        </code>
+                        <p className="text-xs text-zinc-500 mt-2">
+                          (Substitua wry-avocet-85 pelo nome do seu deployment Convex)
                         </p>
-                      )}
+                      </div>
+                      <p className="text-xs text-zinc-400 mt-2">
+                        Verifique a documentação: CORRIGIR_REDIRECT_URI_GITHUB.md
+                      </p>
                     </>
                   ) : (
                     <p className="text-sm text-red-400">{error}</p>

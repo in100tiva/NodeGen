@@ -30,67 +30,25 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
 });
 
 // Query para verificar se as variáveis de ambiente estão configuradas
-export const checkAuthConfig = query({
-  handler: async () => {
-    try {
-      // Acessar variáveis de ambiente de forma segura
-      const clientId: string | undefined = process.env.AUTH_GITHUB_ID;
-      const clientSecret: string | undefined = process.env.AUTH_GITHUB_SECRET;
-      const siteUrl: string | undefined = process.env.CONVEX_SITE_URL;
-      
-      const hasClientId = Boolean(clientId && clientId.length > 0);
-      const hasClientSecret = Boolean(clientSecret && clientSecret.length > 0);
-      const clientIdLength = clientId ? clientId.length : 0;
-      const clientSecretLength = clientSecret ? clientSecret.length : 0;
-      
-      const missing: string[] = [];
-      if (!hasClientId) missing.push("AUTH_GITHUB_ID");
-      if (!hasClientSecret) missing.push("AUTH_GITHUB_SECRET");
-      
-      const siteUrlStr = siteUrl ? String(siteUrl) : "não configurado";
-      const callbackUrl = siteUrl 
-        ? `${String(siteUrl)}/api/auth/callback/github`
-        : "não disponível";
-      
-      const message = callbackUrl !== "não disponível" 
-        ? `Configure esta URL no GitHub OAuth App: ${callbackUrl}`
-        : "CONVEX_SITE_URL não está disponível";
-      
-      return {
-        configured: hasClientId && hasClientSecret,
-        missing: missing,
-        clientIdLength: Number(clientIdLength),
-        clientSecretLength: Number(clientSecretLength),
-        siteUrl: String(siteUrlStr),
-        callbackUrl: String(callbackUrl),
-        message: String(message),
-        debug: {
-          hasClientId: Boolean(hasClientId),
-          hasClientSecret: Boolean(hasClientSecret),
-          providersConfigured: Boolean(hasClientId && hasClientSecret),
-        },
-      };
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      console.error("Erro em checkAuthConfig:", errorMessage);
-      return {
-        configured: false,
-        missing: ["AUTH_GITHUB_ID", "AUTH_GITHUB_SECRET"],
-        clientIdLength: 0,
-        clientSecretLength: 0,
-        siteUrl: "erro ao obter",
-        callbackUrl: "não disponível",
-        message: `Erro ao verificar configuração: ${errorMessage}`,
-        debug: {
-          hasClientId: false,
-          hasClientSecret: false,
-          providersConfigured: false,
-          error: errorMessage,
-        },
-      };
-    }
-  },
-});
+// NOTA: Temporariamente desabilitada - queries do Convex podem não acessar process.env
+// Se necessário, converter para action ou usar valores já carregados no módulo
+// export const checkAuthConfig = query({
+//   handler: async () => {
+//     // Queries do Convex podem não ter acesso a process.env
+//     // Usar valores já carregados no topo do módulo se necessário
+//     return {
+//       configured: !!clientId && !!clientSecret,
+//       missing: [
+//         ...(!clientId ? ["AUTH_GITHUB_ID"] : []),
+//         ...(!clientSecret ? ["AUTH_GITHUB_SECRET"] : []),
+//       ],
+//       siteUrl: process.env.CONVEX_SITE_URL || "não configurado",
+//       callbackUrl: process.env.CONVEX_SITE_URL 
+//         ? `${process.env.CONVEX_SITE_URL}/api/auth/callback/github`
+//         : "não disponível",
+//     };
+//   },
+// });
 
 // Query para obter informações do usuário atual
 export const getCurrentUser = query({
