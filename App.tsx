@@ -168,6 +168,37 @@ export default function App() {
           if (!Array.isArray(cleanNodes)) {
             throw new Error('Serialização de nodes não retornou um array');
           }
+          // Validar estrutura de cada node para garantir compatibilidade com Convex
+          for (const node of cleanNodes) {
+            // Garantir que id é string
+            if (node.id !== undefined && typeof node.id !== 'string') {
+              node.id = String(node.id);
+            }
+            // Garantir que type é string
+            if (node.type !== undefined && typeof node.type !== 'string') {
+              node.type = String(node.type);
+            }
+            // Garantir que position é objeto válido
+            if (!node.position || typeof node.position !== 'object') {
+              node.position = { x: 0, y: 0 };
+            } else {
+              node.position = {
+                x: typeof node.position.x === 'number' ? node.position.x : 0,
+                y: typeof node.position.y === 'number' ? node.position.y : 0
+              };
+            }
+            // Garantir que data é objeto
+            if (!node.data || typeof node.data !== 'object') {
+              node.data = { label: '' };
+            }
+            // Garantir que inputs e outputs são arrays
+            if (!Array.isArray(node.inputs)) {
+              node.inputs = [];
+            }
+            if (!Array.isArray(node.outputs)) {
+              node.outputs = [];
+            }
+          }
         } catch (e) {
           console.error('Erro ao serializar nodes:', e);
           // Se falhar, não enviar nodes (deixar como está no banco)
@@ -193,6 +224,28 @@ export default function App() {
           // Validar que o resultado é um array válido
           if (!Array.isArray(cleanEdges)) {
             throw new Error('Serialização de edges não retornou um array');
+          }
+          // Validar estrutura de cada edge para garantir compatibilidade com Convex
+          for (const edge of cleanEdges) {
+            // Garantir que id é string
+            if (edge.id !== undefined && typeof edge.id !== 'string') {
+              edge.id = String(edge.id);
+            }
+            // Garantir que source é string
+            if (edge.source !== undefined && typeof edge.source !== 'string') {
+              edge.source = String(edge.source);
+            }
+            // Garantir que target é string
+            if (edge.target !== undefined && typeof edge.target !== 'string') {
+              edge.target = String(edge.target);
+            }
+            // Garantir que sourceHandle e targetHandle são strings (ou undefined)
+            if (edge.sourceHandle !== undefined && typeof edge.sourceHandle !== 'string') {
+              edge.sourceHandle = String(edge.sourceHandle);
+            }
+            if (edge.targetHandle !== undefined && typeof edge.targetHandle !== 'string') {
+              edge.targetHandle = String(edge.targetHandle);
+            }
           }
         } catch (e) {
           console.error('Erro ao serializar edges:', e);
@@ -262,34 +315,68 @@ export default function App() {
 
       // #region agent log
       // Log detalhado ANTES de chamar updateWorkflow
+      // Validar estrutura completa antes de enviar
+      const nodesValidation = updateArgs.nodes ? {
+        isArray: Array.isArray(updateArgs.nodes),
+        length: updateArgs.nodes.length,
+        firstNode: updateArgs.nodes[0] ? {
+          id: updateArgs.nodes[0].id,
+          idType: typeof updateArgs.nodes[0].id,
+          type: updateArgs.nodes[0].type,
+          typeType: typeof updateArgs.nodes[0].type,
+          hasPosition: !!updateArgs.nodes[0].position,
+          positionType: typeof updateArgs.nodes[0].position,
+          positionX: updateArgs.nodes[0].position?.x,
+          positionY: updateArgs.nodes[0].position?.y,
+          hasData: !!updateArgs.nodes[0].data,
+          dataType: typeof updateArgs.nodes[0].data,
+          dataKeys: updateArgs.nodes[0].data ? Object.keys(updateArgs.nodes[0].data) : null,
+          hasInputs: Array.isArray(updateArgs.nodes[0].inputs),
+          hasOutputs: Array.isArray(updateArgs.nodes[0].outputs),
+          inputsType: typeof updateArgs.nodes[0].inputs,
+          outputsType: typeof updateArgs.nodes[0].outputs
+        } : null,
+        serializable: (() => { try { JSON.stringify(updateArgs.nodes); return true; } catch(e) { return String(e); } })()
+      } : null;
+      
+      const edgesValidation = updateArgs.edges ? {
+        isArray: Array.isArray(updateArgs.edges),
+        length: updateArgs.edges.length,
+        firstEdge: updateArgs.edges[0] ? {
+          id: updateArgs.edges[0].id,
+          idType: typeof updateArgs.edges[0].id,
+          source: updateArgs.edges[0].source,
+          sourceType: typeof updateArgs.edges[0].source,
+          target: updateArgs.edges[0].target,
+          targetType: typeof updateArgs.edges[0].target
+        } : null,
+        serializable: (() => { try { JSON.stringify(updateArgs.edges); return true; } catch(e) { return String(e); } })()
+      } : null;
+      
+      const settingsValidation = updateArgs.settings ? {
+        type: typeof updateArgs.settings,
+        keys: Object.keys(updateArgs.settings),
+        openRouterKey: updateArgs.settings.openRouterKey,
+        openRouterKeyType: typeof updateArgs.settings.openRouterKey,
+        theme: updateArgs.settings.theme,
+        themeType: typeof updateArgs.settings.theme,
+        isValid: typeof updateArgs.settings.openRouterKey === 'string' && 
+                 (updateArgs.settings.theme === 'dark' || updateArgs.settings.theme === 'light')
+      } : null;
+      
       const logBeforeCall = {
         sessionId: 'debug-session',
         runId: 'run1',
         hypothesisId: 'A',
         location: 'App.tsx:beforeUpdateWorkflow',
-        message: 'Before updateWorkflow call - detailed args',
+        message: 'Before updateWorkflow call - complete validation',
         data: {
           updateArgsKeys: Object.keys(updateArgs),
-          hasNodes: updateArgs.nodes !== undefined,
-          nodesType: typeof updateArgs.nodes,
-          nodesIsArray: Array.isArray(updateArgs.nodes),
-          nodesCount: updateArgs.nodes?.length || 0,
-          nodesSample: updateArgs.nodes ? updateArgs.nodes.slice(0, 2).map((n: any) => ({
-            id: n.id,
-            type: n.type,
-            hasPosition: !!n.position,
-            hasData: !!n.data,
-            dataKeys: n.data ? Object.keys(n.data) : null
-          })) : null,
-          hasEdges: updateArgs.edges !== undefined,
-          edgesType: typeof updateArgs.edges,
-          edgesIsArray: Array.isArray(updateArgs.edges),
-          edgesCount: updateArgs.edges?.length || 0,
-          hasSettings: updateArgs.settings !== undefined,
-          settingsType: typeof updateArgs.settings,
-          settings: updateArgs.settings,
-          settingsKeys: updateArgs.settings ? Object.keys(updateArgs.settings) : null,
-          updateArgsStringified: JSON.stringify(updateArgs).substring(0, 2000),
+          workflowId: String(updateArgs.id),
+          nodesValidation,
+          edgesValidation,
+          settingsValidation,
+          updateArgsStringified: JSON.stringify(updateArgs).substring(0, 5000),
           updateArgsStringifiedFull: JSON.stringify(updateArgs)
         },
         timestamp: Date.now()
