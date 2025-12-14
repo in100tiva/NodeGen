@@ -139,74 +139,60 @@ export default function App() {
       };
 
       // Validar e limpar nodes/edges para garantir serialização
-      // Garantir que sempre sejam arrays válidos (não null/undefined)
+      // Usar JSON.parse(JSON.stringify()) para garantir serialização completa e remover referências
       let cleanNodes: Node[] | undefined = undefined;
       let cleanEdges: Edge[] | undefined = undefined;
       
-      if (nodes && Array.isArray(nodes)) {
+      if (nodes && Array.isArray(nodes) && nodes.length > 0) {
         try {
-          // Limpar nodes removendo qualquer propriedade não serializável
-          cleanNodes = nodes.map(node => ({
-            id: String(node.id),
-            type: node.type,
-            position: {
-              x: typeof node.position?.x === 'number' ? node.position.x : 0,
-              y: typeof node.position?.y === 'number' ? node.position.y : 0
-            },
-            data: node.data ? JSON.parse(JSON.stringify(node.data)) : { label: '' },
-            inputs: Array.isArray(node.inputs) ? node.inputs.map(String) : [],
-            outputs: Array.isArray(node.outputs) ? node.outputs.map(String) : []
-          }));
-          // Testar serialização
-          JSON.stringify(cleanNodes);
-        } catch (e) {
-          console.error('Erro ao serializar nodes:', e, nodes);
-          // Em caso de erro, tentar usar nodes originais
-          try {
-            cleanNodes = JSON.parse(JSON.stringify(nodes));
-          } catch (e2) {
-            console.error('Erro crítico ao serializar nodes:', e2);
-            // Se ainda falhar, usar array vazio para evitar erro no servidor
-            cleanNodes = [];
+          // Usar serialização JSON completa para garantir que tudo é serializável
+          const serialized = JSON.stringify(nodes);
+          cleanNodes = JSON.parse(serialized);
+          // Validar que o resultado é um array válido
+          if (!Array.isArray(cleanNodes)) {
+            throw new Error('Serialização de nodes não retornou um array');
           }
+        } catch (e) {
+          console.error('Erro ao serializar nodes:', e);
+          // Se falhar, não enviar nodes (deixar como está no banco)
+          cleanNodes = undefined;
         }
+      } else if (nodes && Array.isArray(nodes) && nodes.length === 0) {
+        // Array vazio é válido
+        cleanNodes = [];
       } else if (nodes === undefined || nodes === null) {
         // Se nodes é undefined/null, não enviar (deixar como está no banco)
         cleanNodes = undefined;
       } else {
-        // Se não é array, usar array vazio
-        cleanNodes = [];
+        // Se não é array válido, não enviar
+        console.warn('Nodes não é um array válido:', typeof nodes);
+        cleanNodes = undefined;
       }
       
-      if (edges && Array.isArray(edges)) {
+      if (edges && Array.isArray(edges) && edges.length > 0) {
         try {
-          // Limpar edges removendo qualquer propriedade não serializável
-          cleanEdges = edges.map(edge => ({
-            id: String(edge.id),
-            source: String(edge.source),
-            sourceHandle: String(edge.sourceHandle || ''),
-            target: String(edge.target),
-            targetHandle: String(edge.targetHandle || '')
-          }));
-          // Testar serialização
-          JSON.stringify(cleanEdges);
-        } catch (e) {
-          console.error('Erro ao serializar edges:', e, edges);
-          // Em caso de erro, tentar usar edges originais
-          try {
-            cleanEdges = JSON.parse(JSON.stringify(edges));
-          } catch (e2) {
-            console.error('Erro crítico ao serializar edges:', e2);
-            // Se ainda falhar, usar array vazio para evitar erro no servidor
-            cleanEdges = [];
+          // Usar serialização JSON completa para garantir que tudo é serializável
+          const serialized = JSON.stringify(edges);
+          cleanEdges = JSON.parse(serialized);
+          // Validar que o resultado é um array válido
+          if (!Array.isArray(cleanEdges)) {
+            throw new Error('Serialização de edges não retornou um array');
           }
+        } catch (e) {
+          console.error('Erro ao serializar edges:', e);
+          // Se falhar, não enviar edges (deixar como está no banco)
+          cleanEdges = undefined;
         }
+      } else if (edges && Array.isArray(edges) && edges.length === 0) {
+        // Array vazio é válido
+        cleanEdges = [];
       } else if (edges === undefined || edges === null) {
         // Se edges é undefined/null, não enviar (deixar como está no banco)
         cleanEdges = undefined;
       } else {
-        // Se não é array, usar array vazio
-        cleanEdges = [];
+        // Se não é array válido, não enviar
+        console.warn('Edges não é um array válido:', typeof edges);
+        cleanEdges = undefined;
       }
 
       // #region agent log

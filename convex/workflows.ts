@@ -296,8 +296,17 @@ export const updateWorkflow = mutation({
           throw new Error('edges deve ser um array');
         }
       }
+      // Sempre incluir settings no patch para garantir que o schema seja válido
+      // Se não foi fornecido, usar os settings atuais do workflow
       if (validatedSettings !== undefined) {
         updateData.settings = validatedSettings;
+      } else {
+        // Garantir que settings sempre existe no updateData para validar o schema
+        // Se não foi fornecido, manter os settings atuais
+        updateData.settings = workflow.settings || {
+          openRouterKey: "",
+          theme: "dark"
+        };
       }
 
       // #region agent log
