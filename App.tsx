@@ -127,8 +127,31 @@ export default function App() {
       };
 
       // Validar e limpar nodes/edges para garantir serialização
-      const cleanNodes = nodes ? JSON.parse(JSON.stringify(nodes)) : nodes;
-      const cleanEdges = edges ? JSON.parse(JSON.stringify(edges)) : edges;
+      // Garantir que sempre sejam arrays válidos (não null/undefined)
+      let cleanNodes: Node[] | undefined = undefined;
+      let cleanEdges: Edge[] | undefined = undefined;
+      
+      if (nodes && Array.isArray(nodes) && nodes.length > 0) {
+        try {
+          cleanNodes = JSON.parse(JSON.stringify(nodes));
+        } catch (e) {
+          console.error('Erro ao serializar nodes:', e);
+          cleanNodes = nodes; // Usar original se falhar
+        }
+      } else if (nodes && Array.isArray(nodes)) {
+        cleanNodes = []; // Array vazio é válido
+      }
+      
+      if (edges && Array.isArray(edges) && edges.length > 0) {
+        try {
+          cleanEdges = JSON.parse(JSON.stringify(edges));
+        } catch (e) {
+          console.error('Erro ao serializar edges:', e);
+          cleanEdges = edges; // Usar original se falhar
+        }
+      } else if (edges && Array.isArray(edges)) {
+        cleanEdges = []; // Array vazio é válido
+      }
 
       // #region agent log
       const logData2 = {
@@ -152,12 +175,20 @@ export default function App() {
       fetch('http://127.0.0.1:7243/ingest/a7576830-f069-47f1-89e2-c0c545ca634b', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData2)}).catch(()=>{});
       // #endregion
 
-      await updateWorkflow({
+      // Preparar argumentos - só incluir se não forem undefined
+      const updateArgs: any = {
         id: currentWorkflow._id,
-        nodes: cleanNodes,
-        edges: cleanEdges,
         settings: normalizedSettings,
-      });
+      };
+      
+      if (cleanNodes !== undefined) {
+        updateArgs.nodes = cleanNodes;
+      }
+      if (cleanEdges !== undefined) {
+        updateArgs.edges = cleanEdges;
+      }
+
+      await updateWorkflow(updateArgs);
 
       // #region agent log
       fetch('http://127.0.0.1:7243/ingest/a7576830-f069-47f1-89e2-c0c545ca634b', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'A',location:'App.tsx:104',message:'updateWorkflow succeeded',data:{},timestamp:Date.now()})}).catch(()=>{});

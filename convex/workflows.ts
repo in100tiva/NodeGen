@@ -64,38 +64,39 @@ export const updateWorkflow = mutation({
     createVersion: v.optional(v.boolean()), // Auto-save de versão
   },
   handler: async (ctx, args) => {
-    // #region agent log
-    const logEntry1 = {
-      sessionId: 'debug-session',
-      runId: 'run1',
-      hypothesisId: 'A',
-      location: 'convex/workflows.ts:66',
-      message: 'updateWorkflow handler entry - args received',
-      data: {
-        id: args.id,
-        hasName: args.name !== undefined,
-        hasDescription: args.description !== undefined,
-        hasNodes: args.nodes !== undefined,
-        nodesCount: args.nodes?.length || 0,
-        hasEdges: args.edges !== undefined,
-        edgesCount: args.edges?.length || 0,
-        hasSettings: args.settings !== undefined,
-        settingsType: typeof args.settings,
-        settingsValue: args.settings ? {
-          hasOpenRouterKey: args.settings.openRouterKey !== undefined,
-          openRouterKeyType: typeof args.settings.openRouterKey,
-          openRouterKeyValue: args.settings.openRouterKey === null ? 'null' : (args.settings.openRouterKey === undefined ? 'undefined' : String(args.settings.openRouterKey).substring(0, 20)),
-          hasTheme: args.settings.theme !== undefined,
-          themeType: typeof args.settings.theme,
-          themeValue: args.settings.theme
-        } : null
-      },
-      timestamp: Date.now()
-    };
-    console.error('[DEBUG]', JSON.stringify(logEntry1));
-    // #endregion
-
     try {
+      // #region agent log
+      const logEntry1 = {
+        sessionId: 'debug-session',
+        runId: 'run1',
+        hypothesisId: 'A',
+        location: 'convex/workflows.ts:66',
+        message: 'updateWorkflow handler entry - args received',
+        data: {
+          id: args.id,
+          hasName: args.name !== undefined,
+          hasDescription: args.description !== undefined,
+          hasNodes: args.nodes !== undefined,
+          nodesIsArray: Array.isArray(args.nodes),
+          nodesCount: args.nodes?.length || 0,
+          hasEdges: args.edges !== undefined,
+          edgesIsArray: Array.isArray(args.edges),
+          edgesCount: args.edges?.length || 0,
+          hasSettings: args.settings !== undefined,
+          settingsType: typeof args.settings,
+          settingsValue: args.settings ? {
+            hasOpenRouterKey: args.settings.openRouterKey !== undefined,
+            openRouterKeyType: typeof args.settings.openRouterKey,
+            openRouterKeyValue: args.settings.openRouterKey === null ? 'null' : (args.settings.openRouterKey === undefined ? 'undefined' : String(args.settings.openRouterKey).substring(0, 20)),
+            hasTheme: args.settings.theme !== undefined,
+            themeType: typeof args.settings.theme,
+            themeValue: args.settings.theme
+          } : null
+        },
+        timestamp: Date.now()
+      };
+      console.error('[DEBUG]', JSON.stringify(logEntry1));
+      // #endregion
       // TODO: Reativar autenticação quando configurada no Convex Dashboard
       // const identity = await ctx.auth.getUserIdentity();
       // if (!identity) {
@@ -231,10 +232,22 @@ export const updateWorkflow = mutation({
         updateData.description = args.description;
       }
       if (args.nodes !== undefined) {
-        updateData.nodes = args.nodes;
+        // Garantir que nodes é um array válido
+        if (Array.isArray(args.nodes)) {
+          updateData.nodes = args.nodes;
+        } else {
+          console.error('[DEBUG] nodes não é um array:', typeof args.nodes, args.nodes);
+          throw new Error('nodes deve ser um array');
+        }
       }
       if (args.edges !== undefined) {
-        updateData.edges = args.edges;
+        // Garantir que edges é um array válido
+        if (Array.isArray(args.edges)) {
+          updateData.edges = args.edges;
+        } else {
+          console.error('[DEBUG] edges não é um array:', typeof args.edges, args.edges);
+          throw new Error('edges deve ser um array');
+        }
       }
       if (validatedSettings !== undefined) {
         updateData.settings = validatedSettings;
