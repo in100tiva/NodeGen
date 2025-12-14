@@ -354,49 +354,46 @@ export default function App() {
         updateArgs.edges = cleanEdges;
       }
 
-      try {
-        // SEMPRE usar mutation alternativa que recebe JSON string
-        // Isso contorna problemas de validação do Convex com v.array(v.any())
-        const alternativeArgs: any = {
-          id: updateArgs.id,
+      // SEMPRE usar mutation alternativa que recebe JSON string
+      // Isso contorna problemas de validação do Convex com v.array(v.any())
+      // Definir alternativeArgs ANTES do try para estar disponível no catch
+      const alternativeArgs: any = {
+        id: updateArgs.id,
+      };
+      
+      // Incluir nodesJson apenas se houver nodes (não enviar se vazio)
+      if (updateArgs.nodes !== undefined && Array.isArray(updateArgs.nodes) && updateArgs.nodes.length > 0) {
+        alternativeArgs.nodesJson = JSON.stringify(updateArgs.nodes);
+      } else if (updateArgs.nodes !== undefined && Array.isArray(updateArgs.nodes) && updateArgs.nodes.length === 0) {
+        // Se nodes é array vazio, enviar como string "[]"
+        alternativeArgs.nodesJson = '[]';
+      }
+      // Se nodes é undefined, não incluir nodesJson (será undefined no backend)
+      
+      // Incluir edgesJson apenas se houver edges (não enviar se vazio)
+      if (updateArgs.edges !== undefined && Array.isArray(updateArgs.edges) && updateArgs.edges.length > 0) {
+        alternativeArgs.edgesJson = JSON.stringify(updateArgs.edges);
+      } else if (updateArgs.edges !== undefined && Array.isArray(updateArgs.edges) && updateArgs.edges.length === 0) {
+        // Se edges é array vazio, enviar como string "[]"
+        alternativeArgs.edgesJson = '[]';
+      }
+      // Se edges é undefined, não incluir edgesJson (será undefined no backend)
+      
+      // Incluir settings se fornecido - GARANTIR estrutura válida
+      if (updateArgs.settings !== undefined) {
+        // Validar e normalizar settings antes de enviar
+        const validSettings = {
+          openRouterKey: typeof updateArgs.settings.openRouterKey === 'string' 
+            ? updateArgs.settings.openRouterKey 
+            : '',
+          theme: (updateArgs.settings.theme === 'dark' || updateArgs.settings.theme === 'light')
+            ? updateArgs.settings.theme
+            : 'dark'
         };
-        
-        // Incluir nodesJson apenas se houver nodes (não enviar se vazio)
-        if (updateArgs.nodes !== undefined && Array.isArray(updateArgs.nodes) && updateArgs.nodes.length > 0) {
-          alternativeArgs.nodesJson = JSON.stringify(updateArgs.nodes);
-        } else if (updateArgs.nodes !== undefined && Array.isArray(updateArgs.nodes) && updateArgs.nodes.length === 0) {
-          // Se nodes é array vazio, enviar como string "[]"
-          alternativeArgs.nodesJson = '[]';
-        }
-        // Se nodes é undefined, não incluir nodesJson (será undefined no backend)
-        
-        // Incluir edgesJson apenas se houver edges (não enviar se vazio)
-        if (updateArgs.edges !== undefined && Array.isArray(updateArgs.edges) && updateArgs.edges.length > 0) {
-          alternativeArgs.edgesJson = JSON.stringify(updateArgs.edges);
-        } else if (updateArgs.edges !== undefined && Array.isArray(updateArgs.edges) && updateArgs.edges.length === 0) {
-          // Se edges é array vazio, enviar como string "[]"
-          alternativeArgs.edgesJson = '[]';
-        }
-        // Se edges é undefined, não incluir edgesJson (será undefined no backend)
-        
-        // Incluir settings se fornecido - GARANTIR estrutura válida
-        if (updateArgs.settings !== undefined) {
-          // Validar e normalizar settings antes de enviar
-          const validSettings = {
-            openRouterKey: typeof updateArgs.settings.openRouterKey === 'string' 
-              ? updateArgs.settings.openRouterKey 
-              : '',
-            theme: (updateArgs.settings.theme === 'dark' || updateArgs.settings.theme === 'light')
-              ? updateArgs.settings.theme
-              : 'dark'
-          };
-          alternativeArgs.settings = validSettings;
-        }
+        alternativeArgs.settings = validSettings;
+      }
 
-        // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/a7576830-f069-47f1-89e2-c0c545ca634b', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'A',location:'App.tsx:beforeMutationCall',message:'Before calling updateWorkflowWithJsonNodes',data:{alternativeArgsKeys:Object.keys(alternativeArgs),nodesJsonType:typeof alternativeArgs.nodesJson,nodesJsonLength:alternativeArgs.nodesJson?.length,edgesJsonType:typeof alternativeArgs.edgesJson,edgesJsonLength:alternativeArgs.edgesJson?.length,hasSettings:!!alternativeArgs.settings,settingsType:typeof alternativeArgs.settings,settingsKeys:alternativeArgs.settings?Object.keys(alternativeArgs.settings):null,alternativeArgsStringified:JSON.stringify(alternativeArgs).substring(0,2000)},timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
-        
+      try {
         console.log('[DEBUG FRONTEND] About to call updateWorkflowWithJsonNodes with:', {
           keys: Object.keys(alternativeArgs),
           nodesJsonType: typeof alternativeArgs.nodesJson,
@@ -423,11 +420,14 @@ export default function App() {
           error: callError,
           message: callError?.message,
           stack: callError?.stack,
-          alternativeArgs: {
-            ...alternativeArgs,
-            nodesJson: alternativeArgs.nodesJson?.substring(0, 200) + '...',
-            edgesJson: alternativeArgs.edgesJson?.substring(0, 200) + '...',
-          }
+          alternativeArgs: alternativeArgs ? {
+            keys: Object.keys(alternativeArgs),
+            hasNodesJson: alternativeArgs.nodesJson !== undefined,
+            hasEdgesJson: alternativeArgs.edgesJson !== undefined,
+            hasSettings: alternativeArgs.settings !== undefined,
+            nodesJsonPreview: alternativeArgs.nodesJson?.substring(0, 200),
+            edgesJsonPreview: alternativeArgs.edgesJson?.substring(0, 200),
+          } : 'alternativeArgs não definido'
         });
         throw callError;
       }
