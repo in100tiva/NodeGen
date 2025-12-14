@@ -413,58 +413,87 @@ export const updateWorkflowWithJsonNodes = mutation({
           updateData.nodes = [];
         } else {
           try {
+            console.log('[DEBUG] Parseando nodesJson, tamanho:', args.nodesJson.length);
             const parsedNodes = JSON.parse(args.nodesJson);
-            if (Array.isArray(parsedNodes)) {
-              // Validar e limpar cada node antes de adicionar
-              const cleanedNodes: any[] = [];
-              for (const node of parsedNodes) {
-                // Validar campos obrigatórios
-                if (!node.id || typeof node.id !== 'string') {
-                  console.warn('[WARN] Node sem id válido, pulando:', node);
-                  continue;
-                }
-                
-                // Criar node limpo apenas com campos essenciais
-                const cleanedNode: any = {
-                  id: String(node.id || ''),
-                  type: String(node.type || ''),
-                  position: {
-                    x: typeof node.position?.x === 'number' ? node.position.x : 0,
-                    y: typeof node.position?.y === 'number' ? node.position.y : 0
-                  },
-                  data: {},
-                  inputs: Array.isArray(node.inputs) ? node.inputs.map(String) : [],
-                  outputs: Array.isArray(node.outputs) ? node.outputs.map(String) : []
-                };
-                
-                // Copiar apenas campos primitivos de node.data
-                if (node.data && typeof node.data === 'object') {
-                  for (const key in node.data) {
-                    // Ignorar propriedades que começam com _ (internas do React Flow)
-                    if (key.startsWith('_')) continue;
-                    
-                    const value = node.data[key];
-                    if (value !== undefined && value !== null && typeof value !== 'function') {
-                      if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
-                        cleanedNode.data[key] = value;
-                      }
+            
+            if (!Array.isArray(parsedNodes)) {
+              console.error('[ERROR] nodesJson não é um array após parse:', typeof parsedNodes);
+              throw new Error('nodesJson não é um array válido após parse');
+            }
+            
+            console.log('[DEBUG] nodesJson parseado com sucesso, quantidade de nodes:', parsedNodes.length);
+            
+            // Validar e limpar cada node antes de adicionar
+            const cleanedNodes: any[] = [];
+            for (let i = 0; i < parsedNodes.length; i++) {
+              const node = parsedNodes[i];
+              
+              // Validar campos obrigatórios
+              if (!node || typeof node !== 'object') {
+                console.warn(`[WARN] Node ${i} não é um objeto, pulando`);
+                continue;
+              }
+              
+              if (!node.id || typeof node.id !== 'string') {
+                console.warn(`[WARN] Node ${i} sem id válido, pulando:`, { id: node.id, type: typeof node.id });
+                continue;
+              }
+              
+              if (!node.type || typeof node.type !== 'string') {
+                console.warn(`[WARN] Node ${i} sem type válido, pulando:`, { type: node.type, typeOf: typeof node.type });
+                continue;
+              }
+              
+              if (!node.position || typeof node.position !== 'object') {
+                console.warn(`[WARN] Node ${i} sem position válido, pulando:`, { position: node.position });
+                continue;
+              }
+              
+              // Criar node limpo apenas com campos essenciais
+              const cleanedNode: any = {
+                id: String(node.id),
+                type: String(node.type),
+                position: {
+                  x: typeof node.position.x === 'number' ? node.position.x : 0,
+                  y: typeof node.position.y === 'number' ? node.position.y : 0
+                },
+                data: {},
+                inputs: Array.isArray(node.inputs) ? node.inputs.map(String) : [],
+                outputs: Array.isArray(node.outputs) ? node.outputs.map(String) : []
+              };
+              
+              // Copiar apenas campos primitivos de node.data
+              if (node.data && typeof node.data === 'object') {
+                for (const key in node.data) {
+                  // Ignorar propriedades que começam com _ (internas do React Flow)
+                  if (key.startsWith('_')) continue;
+                  
+                  const value = node.data[key];
+                  if (value !== undefined && value !== null && typeof value !== 'function') {
+                    if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+                      cleanedNode.data[key] = value;
                     }
                   }
                 }
-                
-                // Garantir que label sempre existe
-                if (!cleanedNode.data.label) {
-                  cleanedNode.data.label = String(node.data?.label || node.type || 'Node');
-                }
-                
-                cleanedNodes.push(cleanedNode);
               }
-              updateData.nodes = cleanedNodes;
-            } else {
-              throw new Error('nodesJson não é um array válido após parse');
+              
+              // Garantir que label sempre existe
+              if (!cleanedNode.data.label) {
+                cleanedNode.data.label = String(node.data?.label || node.type || 'Node');
+              }
+              
+              cleanedNodes.push(cleanedNode);
             }
+            
+            console.log('[DEBUG] Nodes limpos e validados:', cleanedNodes.length, 'de', parsedNodes.length);
+            updateData.nodes = cleanedNodes;
           } catch (e: any) {
-            console.error('[ERROR] Erro ao parsear nodesJson:', e.message, args.nodesJson?.substring(0, 200));
+            console.error('[ERROR] Erro ao parsear nodesJson:', {
+              message: e.message,
+              name: e.name,
+              stack: e.stack?.substring(0, 500),
+              nodesJsonPreview: args.nodesJson?.substring(0, 500)
+            });
             throw new Error(`Erro ao parsear nodesJson: ${e.message}`);
           }
         }
