@@ -26,14 +26,32 @@ if (providers.length === 0) {
 }
 
 // Verificar se SITE_URL está configurada (necessária para Convex Auth)
+// IMPORTANTE: SITE_URL deve ser a URL do FRONTEND (onde o usuário acessa o site)
+// NÃO use URLs .convex.site ou .convex.cloud - use o domínio do seu site
+// Exemplo: https://nodegen.in100tiva.com (sem trailing slash)
 const siteUrl = process.env.SITE_URL;
 if (!siteUrl) {
   console.warn(
     "⚠️ SITE_URL não está configurada. " +
     "Configure em: https://dashboard.convex.dev → Settings → Environment Variables\n" +
-    "Para produção, use: https://cautious-buzzard-249.convex.site\n" +
-    "Para desenvolvimento, use: http://localhost:3000"
+    "Para produção, use a URL do seu frontend (ex: https://nodegen.in100tiva.com)\n" +
+    "Para desenvolvimento, use: http://localhost:5173 (ou a porta do seu Vite)\n" +
+    "⚠️ NÃO use URLs .convex.site ou .convex.cloud como SITE_URL"
   );
+} else {
+  // Validar formato do SITE_URL
+  if (siteUrl.endsWith('/')) {
+    console.warn(
+      "⚠️ SITE_URL não deve ter trailing slash. " +
+      `Atual: ${siteUrl} → Deve ser: ${siteUrl.slice(0, -1)}`
+    );
+  }
+  if (siteUrl.includes('.convex.site') || siteUrl.includes('.convex.cloud')) {
+    console.warn(
+      "⚠️ SITE_URL não deve ser uma URL do Convex. " +
+      "Use a URL do seu frontend (ex: https://nodegen.in100tiva.com)"
+    );
+  }
 }
 
 // Configurar convexAuth
