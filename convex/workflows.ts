@@ -513,17 +513,25 @@ export const updateWorkflow = mutation({
   },
 });
 
-// Mutation de teste para isolar o problema
-export const testUpdateWorkflow = mutation({
+// Mutation alternativa que recebe nodes como string JSON para contornar validação do Convex
+export const updateWorkflowWithJsonNodes = mutation({
   args: {
     id: v.id("workflows"),
-    nodes: v.optional(v.array(v.any())),
+    nodesJson: v.optional(v.string()),
+    edgesJson: v.optional(v.string()),
+    settings: v.optional(
+      v.object({
+        openRouterKey: v.string(),
+        theme: v.union(v.literal("dark"), v.literal("light")),
+      })
+    ),
   },
   handler: async (ctx, args) => {
-    console.error('[TEST] testUpdateWorkflow called with:', {
+    console.error('[ALTERNATIVE] updateWorkflowWithJsonNodes called with:', {
       id: String(args.id),
-      hasNodes: args.nodes !== undefined,
-      nodesCount: args.nodes?.length || 0
+      hasNodesJson: args.nodesJson !== undefined,
+      hasEdgesJson: args.edgesJson !== undefined,
+      hasSettings: args.settings !== undefined
     });
     
     const workflow = await ctx.db.get(args.id);
@@ -535,8 +543,39 @@ export const testUpdateWorkflow = mutation({
       updatedAt: Date.now(),
     };
     
-    if (args.nodes !== undefined) {
-      updateData.nodes = args.nodes;
+    // Parse nodes de JSON string
+    if (args.nodesJson !== undefined) {
+      try {
+        const parsedNodes = JSON.parse(args.nodesJson);
+        if (Array.isArray(parsedNodes)) {
+          updateData.nodes = parsedNodes;
+        } else {
+          throw new Error('nodesJson não é um array válido após parse');
+        }
+      } catch (e: any) {
+        console.error('[ALTERNATIVE] Erro ao parsear nodesJson:', e);
+        throw new Error(`Erro ao parsear nodesJson: ${e.message}`);
+      }
+    }
+    
+    // Parse edges de JSON string
+    if (args.edgesJson !== undefined) {
+      try {
+        const parsedEdges = JSON.parse(args.edgesJson);
+        if (Array.isArray(parsedEdges)) {
+          updateData.edges = parsedEdges;
+        } else {
+          throw new Error('edgesJson não é um array válido após parse');
+        }
+      } catch (e: any) {
+        console.error('[ALTERNATIVE] Erro ao parsear edgesJson:', e);
+        throw new Error(`Erro ao parsear edgesJson: ${e.message}`);
+      }
+    }
+    
+    // Settings
+    if (args.settings !== undefined) {
+      updateData.settings = args.settings;
     }
     
     await ctx.db.patch(args.id, updateData);

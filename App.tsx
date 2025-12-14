@@ -20,6 +20,7 @@ export default function App() {
   // Removido useConvexAuth temporariamente até autenticação estar configurada
   const { currentWorkflow, setCurrentWorkflowId } = useWorkflowStore();
   const { updateWorkflow, createWorkflow } = useWorkflowMutations();
+  const updateWorkflowWithJsonNodes = useMutation(api.workflows.updateWorkflowWithJsonNodes);
   const executeWorkflowAction = useAction(api.openrouter.executeWorkflow);
   
   // Carregar workflows no store (necessário para restaurar workflow após reload)
@@ -450,7 +451,24 @@ export default function App() {
       // #endregion
 
       try {
-        await updateWorkflow(updateArgs);
+        // Se houver nodes, usar mutation alternativa que recebe JSON string
+        // Isso contorna problemas de validação do Convex com v.array(v.any())
+        if (updateArgs.nodes !== undefined && updateArgs.nodes.length > 0) {
+          const alternativeArgs: any = {
+            id: updateArgs.id,
+            nodesJson: JSON.stringify(updateArgs.nodes),
+          };
+          if (updateArgs.edges !== undefined && updateArgs.edges.length > 0) {
+            alternativeArgs.edgesJson = JSON.stringify(updateArgs.edges);
+          }
+          if (updateArgs.settings !== undefined) {
+            alternativeArgs.settings = updateArgs.settings;
+          }
+          await updateWorkflowWithJsonNodes(alternativeArgs);
+        } else {
+          // Se não houver nodes, usar mutation normal
+          await updateWorkflow(updateArgs);
+        }
       } catch (callError: any) {
         // #region agent log
         const logCallError = {
