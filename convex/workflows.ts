@@ -292,6 +292,18 @@ export const updateWorkflowWithJsonNodes = mutation({
     ),
   },
   handler: async (ctx, args) => {
+    // Log imediato para verificar se o handler está sendo chamado
+    console.log('[DEBUG] updateWorkflowWithJsonNodes chamado com:', {
+      id: String(args.id),
+      hasNodesJson: args.nodesJson !== undefined,
+      nodesJsonType: typeof args.nodesJson,
+      nodesJsonLength: args.nodesJson?.length,
+      hasEdgesJson: args.edgesJson !== undefined,
+      edgesJsonType: typeof args.edgesJson,
+      edgesJsonLength: args.edgesJson?.length,
+      hasSettings: args.settings !== undefined
+    });
+    
     try {
       // Verificar se workflow existe ANTES de processar
       const workflow = await ctx.db.get(args.id);
@@ -299,6 +311,13 @@ export const updateWorkflowWithJsonNodes = mutation({
         console.error('[ERROR] Workflow not found:', String(args.id));
         throw new Error("Workflow not found");
       }
+      
+      console.log('[DEBUG] Workflow encontrado:', {
+        id: String(workflow._id),
+        nodesCount: workflow.nodes?.length || 0,
+        edgesCount: workflow.edges?.length || 0,
+        hasSettings: !!workflow.settings
+      });
       
       // TODO: Reativar autenticação quando configurada no Convex Dashboard
       // const identity = await ctx.auth.getUserIdentity();
@@ -629,21 +648,30 @@ export const updateWorkflowWithJsonNodes = mutation({
         throw new Error(`updateData.settings.theme deve ser 'dark' ou 'light', recebido: ${updateData.settings.theme}`);
       }
       
-      // Log antes de fazer patch (apenas se houver dados para atualizar além de updatedAt)
-      const hasDataToUpdate = Object.keys(updateData).length > 1;
-      if (hasDataToUpdate) {
-        console.log('[DEBUG] Atualizando workflow:', {
-          workflowId: String(args.id),
-          updateKeys: Object.keys(updateData),
-          hasNodes: updateData.nodes !== undefined,
-          hasEdges: updateData.edges !== undefined,
-          hasSettings: updateData.settings !== undefined,
-          nodesCount: updateData.nodes !== undefined ? updateData.nodes.length : 'não atualizado',
-          edgesCount: updateData.edges !== undefined ? updateData.edges.length : 'não atualizado'
-        });
-      }
+      // Log antes de fazer patch
+      console.log('[DEBUG] Preparando para fazer patch:', {
+        workflowId: String(args.id),
+        updateKeys: Object.keys(updateData),
+        nodesCount: updateData.nodes?.length ?? 0,
+        edgesCount: updateData.edges?.length ?? 0,
+        hasSettings: !!updateData.settings,
+        settingsKeys: updateData.settings ? Object.keys(updateData.settings) : null
+      });
       
-      await ctx.db.patch(args.id, updateData);
+      // Tentar fazer o patch
+      try {
+        await ctx.db.patch(args.id, updateData);
+        console.log('[DEBUG] Patch realizado com sucesso');
+      } catch (patchError: any) {
+        console.error('[ERROR] Erro ao fazer patch:', {
+          message: patchError?.message,
+          name: patchError?.name,
+          stack: patchError?.stack?.substring(0, 1000),
+          updateDataKeys: Object.keys(updateData),
+          updateDataPreview: JSON.stringify(updateData).substring(0, 1000)
+        });
+        throw patchError;
+      }
       
       return args.id;
     } catch (error: any) {
