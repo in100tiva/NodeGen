@@ -550,14 +550,49 @@ export const updateWorkflowWithJsonNodes = mutation({
       };
       
       // Parse nodes de JSON string
-      if (args.nodesJson !== undefined) {
+      if (args.nodesJson !== undefined && args.nodesJson !== '[]' && args.nodesJson.trim() !== '') {
         try {
           console.error('[ALTERNATIVE] Parsing nodesJson, length:', args.nodesJson.length);
           const parsedNodes = JSON.parse(args.nodesJson);
           console.error('[ALTERNATIVE] Parsed nodes, isArray:', Array.isArray(parsedNodes), 'length:', parsedNodes?.length);
           if (Array.isArray(parsedNodes)) {
-            updateData.nodes = parsedNodes;
-            console.error('[ALTERNATIVE] nodes added to updateData, count:', parsedNodes.length);
+            // Validar e limpar cada node antes de adicionar
+            const cleanedNodes: any[] = [];
+            for (const node of parsedNodes) {
+              // Criar node limpo apenas com campos essenciais
+              const cleanedNode: any = {
+                id: String(node.id || ''),
+                type: String(node.type || ''),
+                position: {
+                  x: typeof node.position?.x === 'number' ? node.position.x : 0,
+                  y: typeof node.position?.y === 'number' ? node.position.y : 0
+                },
+                data: {},
+                inputs: Array.isArray(node.inputs) ? node.inputs.map(String) : [],
+                outputs: Array.isArray(node.outputs) ? node.outputs.map(String) : []
+              };
+              
+              // Copiar apenas campos primitivos de node.data
+              if (node.data && typeof node.data === 'object') {
+                for (const key in node.data) {
+                  const value = node.data[key];
+                  if (value !== undefined && value !== null && typeof value !== 'function') {
+                    if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+                      cleanedNode.data[key] = value;
+                    }
+                  }
+                }
+              }
+              
+              // Garantir que label sempre existe
+              if (!cleanedNode.data.label) {
+                cleanedNode.data.label = String(node.data?.label || '');
+              }
+              
+              cleanedNodes.push(cleanedNode);
+            }
+            updateData.nodes = cleanedNodes;
+            console.error('[ALTERNATIVE] cleaned nodes added to updateData, count:', cleanedNodes.length);
           } else {
             throw new Error('nodesJson não é um array válido após parse');
           }
@@ -565,17 +600,36 @@ export const updateWorkflowWithJsonNodes = mutation({
           console.error('[ALTERNATIVE] Erro ao parsear nodesJson:', e);
           throw new Error(`Erro ao parsear nodesJson: ${e.message}`);
         }
+      } else if (args.nodesJson === '[]' || args.nodesJson?.trim() === '') {
+        // Se nodesJson é array vazio, não atualizar nodes (deixar como está)
+        console.error('[ALTERNATIVE] nodesJson is empty, skipping nodes update');
       }
       
       // Parse edges de JSON string
-      if (args.edgesJson !== undefined) {
+      if (args.edgesJson !== undefined && args.edgesJson !== '[]' && args.edgesJson.trim() !== '') {
         try {
           console.error('[ALTERNATIVE] Parsing edgesJson, length:', args.edgesJson.length);
           const parsedEdges = JSON.parse(args.edgesJson);
           console.error('[ALTERNATIVE] Parsed edges, isArray:', Array.isArray(parsedEdges), 'length:', parsedEdges?.length);
           if (Array.isArray(parsedEdges)) {
-            updateData.edges = parsedEdges;
-            console.error('[ALTERNATIVE] edges added to updateData, count:', parsedEdges.length);
+            // Validar e limpar cada edge antes de adicionar
+            const cleanedEdges: any[] = [];
+            for (const edge of parsedEdges) {
+              const cleanedEdge: any = {
+                id: String(edge.id || ''),
+                source: String(edge.source || ''),
+                target: String(edge.target || ''),
+              };
+              if (edge.sourceHandle !== undefined) {
+                cleanedEdge.sourceHandle = String(edge.sourceHandle);
+              }
+              if (edge.targetHandle !== undefined) {
+                cleanedEdge.targetHandle = String(edge.targetHandle);
+              }
+              cleanedEdges.push(cleanedEdge);
+            }
+            updateData.edges = cleanedEdges;
+            console.error('[ALTERNATIVE] cleaned edges added to updateData, count:', cleanedEdges.length);
           } else {
             throw new Error('edgesJson não é um array válido após parse');
           }
@@ -583,6 +637,9 @@ export const updateWorkflowWithJsonNodes = mutation({
           console.error('[ALTERNATIVE] Erro ao parsear edgesJson:', e);
           throw new Error(`Erro ao parsear edgesJson: ${e.message}`);
         }
+      } else if (args.edgesJson === '[]' || args.edgesJson?.trim() === '') {
+        // Se edgesJson é array vazio, não atualizar edges (deixar como está)
+        console.error('[ALTERNATIVE] edgesJson is empty, skipping edges update');
       }
       
       // Settings
