@@ -20,7 +20,20 @@ export default function App() {
   // Removido useConvexAuth temporariamente até autenticação estar configurada
   const { currentWorkflow, setCurrentWorkflowId } = useWorkflowStore();
   const { updateWorkflow, createWorkflow } = useWorkflowMutations();
-  const updateWorkflowWithJsonNodes = useMutation(api.workflows.updateWorkflowWithJsonNodes);
+  
+  // Tentar carregar mutation alternativa, com fallback se não estiver disponível
+  let updateWorkflowWithJsonNodes: any = null;
+  try {
+    if (api.workflows.updateWorkflowWithJsonNodes) {
+      updateWorkflowWithJsonNodes = useMutation(api.workflows.updateWorkflowWithJsonNodes);
+      console.log('[DEBUG FRONTEND] updateWorkflowWithJsonNodes mutation loaded');
+    } else {
+      console.warn('[DEBUG FRONTEND] updateWorkflowWithJsonNodes not found in API, will use fallback');
+    }
+  } catch (e: any) {
+    console.warn('[DEBUG FRONTEND] Error loading updateWorkflowWithJsonNodes:', e);
+  }
+  
   const executeWorkflowAction = useAction(api.openrouter.executeWorkflow);
   
   // Carregar workflows no store (necessário para restaurar workflow após reload)
