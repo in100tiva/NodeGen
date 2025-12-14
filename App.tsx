@@ -231,8 +231,8 @@ export default function App() {
           cleanNodes = undefined;
         }
       } else if (nodes && Array.isArray(nodes) && nodes.length === 0) {
-        // Array vazio é válido
-        cleanNodes = [];
+        // Array vazio - não enviar (deixar como está no banco)
+        cleanNodes = undefined;
       } else if (nodes === undefined || nodes === null) {
         // Se nodes é undefined/null, não enviar (deixar como está no banco)
         cleanNodes = undefined;
@@ -279,8 +279,8 @@ export default function App() {
           cleanEdges = undefined;
         }
       } else if (edges && Array.isArray(edges) && edges.length === 0) {
-        // Array vazio é válido
-        cleanEdges = [];
+        // Array vazio - não enviar (deixar como está no banco)
+        cleanEdges = undefined;
       } else if (edges === undefined || edges === null) {
         // Se edges é undefined/null, não enviar (deixar como está no banco)
         cleanEdges = undefined;
