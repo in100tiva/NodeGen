@@ -64,6 +64,15 @@ export const updateWorkflow = mutation({
     createVersion: v.optional(v.boolean()), // Auto-save de versão
   },
   handler: async (ctx, args) => {
+    // Log imediato no início do handler para verificar se está sendo chamado
+    console.error('[DEBUG HANDLER ENTRY] updateWorkflow called with args:', {
+      id: String(args.id),
+      hasNodes: args.nodes !== undefined,
+      hasEdges: args.edges !== undefined,
+      hasSettings: args.settings !== undefined,
+      argsKeys: Object.keys(args)
+    });
+    
     // #region agent log
     const logEntry0 = {
       sessionId: 'debug-session',
