@@ -292,47 +292,51 @@ export const updateWorkflowWithJsonNodes = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    // Log imediato no início - DEVE aparecer no Convex Dashboard
-    // Se este log não aparecer, o erro está na validação de argumentos ANTES do handler
-    console.error('[ALTERNATIVE HANDLER ENTRY] updateWorkflowWithJsonNodes called with:', {
-      id: String(args.id),
-      hasNodesJson: args.nodesJson !== undefined,
-      nodesJsonLength: args.nodesJson?.length || 0,
-      nodesJsonType: typeof args.nodesJson,
-      hasEdgesJson: args.edgesJson !== undefined,
-      edgesJsonLength: args.edgesJson?.length || 0,
-      edgesJsonType: typeof args.edgesJson,
-      hasSettings: args.settings !== undefined,
-      settingsType: typeof args.settings,
-      argsKeys: Object.keys(args),
-      argsStringified: JSON.stringify(args).substring(0, 1000)
-    });
-    
-    // Se chegou aqui, o handler está sendo chamado
-    // Se este log não aparecer no Convex Dashboard, o erro está na validação de argumentos
-    
     try {
+      // Verificar se workflow existe ANTES de processar
       const workflow = await ctx.db.get(args.id);
       if (!workflow) {
+        console.error('[ERROR] Workflow not found:', String(args.id));
         throw new Error("Workflow not found");
       }
       
-      console.error('[ALTERNATIVE] Workflow found, preparing updateData');
+      // TODO: Reativar autenticação quando configurada no Convex Dashboard
+      // const identity = await ctx.auth.getUserIdentity();
+      // if (!identity) {
+      //   throw new Error("Not authenticated");
+      // }
+      // const userId = identity.tokenIdentifier;
+      
+      // Temporário: usar um userId fixo para desenvolvimento
+      const userId = "dev-user-123";
+      
+      // Verificar autorização
+      if (workflow.userId !== userId) {
+        console.error('[ERROR] Not authorized to update workflow:', {
+          workflowUserId: workflow.userId,
+          requestUserId: userId
+        });
+        throw new Error("Not authorized");
+      }
       
       const updateData: any = {
         updatedAt: Date.now(),
       };
       
       // Parse nodes de JSON string
-      if (args.nodesJson !== undefined && args.nodesJson !== '[]' && args.nodesJson.trim() !== '') {
+      if (args.nodesJson !== undefined && args.nodesJson !== null && args.nodesJson !== '[]' && args.nodesJson.trim() !== '') {
         try {
-          console.error('[ALTERNATIVE] Parsing nodesJson, length:', args.nodesJson.length);
           const parsedNodes = JSON.parse(args.nodesJson);
-          console.error('[ALTERNATIVE] Parsed nodes, isArray:', Array.isArray(parsedNodes), 'length:', parsedNodes?.length);
           if (Array.isArray(parsedNodes)) {
             // Validar e limpar cada node antes de adicionar
             const cleanedNodes: any[] = [];
             for (const node of parsedNodes) {
+              // Validar campos obrigatórios
+              if (!node.id || typeof node.id !== 'string') {
+                console.warn('[WARN] Node sem id válido, pulando:', node);
+                continue;
+              }
+              
               // Criar node limpo apenas com campos essenciais
               const cleanedNode: any = {
                 id: String(node.id || ''),
@@ -349,6 +353,9 @@ export const updateWorkflowWithJsonNodes = mutation({
               // Copiar apenas campos primitivos de node.data
               if (node.data && typeof node.data === 'object') {
                 for (const key in node.data) {
+                  // Ignorar propriedades que começam com _ (internas do React Flow)
+                  if (key.startsWith('_')) continue;
+                  
                   const value = node.data[key];
                   if (value !== undefined && value !== null && typeof value !== 'function') {
                     if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
@@ -360,32 +367,27 @@ export const updateWorkflowWithJsonNodes = mutation({
               
               // Garantir que label sempre existe
               if (!cleanedNode.data.label) {
-                cleanedNode.data.label = String(node.data?.label || '');
+                cleanedNode.data.label = String(node.data?.label || node.type || 'Node');
               }
               
               cleanedNodes.push(cleanedNode);
             }
             updateData.nodes = cleanedNodes;
-            console.error('[ALTERNATIVE] cleaned nodes added to updateData, count:', cleanedNodes.length);
           } else {
             throw new Error('nodesJson não é um array válido após parse');
           }
         } catch (e: any) {
-          console.error('[ALTERNATIVE] Erro ao parsear nodesJson:', e);
+          console.error('[ERROR] Erro ao parsear nodesJson:', e.message, args.nodesJson?.substring(0, 200));
           throw new Error(`Erro ao parsear nodesJson: ${e.message}`);
         }
       } else if (args.nodesJson === '[]' || args.nodesJson?.trim() === '') {
-        // Se nodesJson é array vazio, definir nodes como array vazio
-        console.error('[ALTERNATIVE] nodesJson is empty, setting nodes to empty array');
         updateData.nodes = [];
       }
       
       // Parse edges de JSON string
-      if (args.edgesJson !== undefined && args.edgesJson !== '[]' && args.edgesJson.trim() !== '') {
+      if (args.edgesJson !== undefined && args.edgesJson !== null && args.edgesJson !== '[]' && args.edgesJson.trim() !== '') {
         try {
-          console.error('[ALTERNATIVE] Parsing edgesJson, length:', args.edgesJson.length);
           const parsedEdges = JSON.parse(args.edgesJson);
-          console.error('[ALTERNATIVE] Parsed edges, isArray:', Array.isArray(parsedEdges), 'length:', parsedEdges?.length);
           if (Array.isArray(parsedEdges)) {
             // Validar e limpar cada edge antes de adicionar
             const cleanedEdges: any[] = [];
@@ -404,32 +406,56 @@ export const updateWorkflowWithJsonNodes = mutation({
               cleanedEdges.push(cleanedEdge);
             }
             updateData.edges = cleanedEdges;
-            console.error('[ALTERNATIVE] cleaned edges added to updateData, count:', cleanedEdges.length);
           } else {
             throw new Error('edgesJson não é um array válido após parse');
           }
         } catch (e: any) {
-          console.error('[ALTERNATIVE] Erro ao parsear edgesJson:', e);
           throw new Error(`Erro ao parsear edgesJson: ${e.message}`);
         }
       } else if (args.edgesJson === '[]' || args.edgesJson?.trim() === '') {
-        // Se edgesJson é array vazio, definir edges como array vazio
-        console.error('[ALTERNATIVE] edgesJson is empty, setting edges to empty array');
         updateData.edges = [];
       }
       
       // Settings
       if (args.settings !== undefined) {
         updateData.settings = args.settings;
-        console.error('[ALTERNATIVE] settings added to updateData');
+      } else {
+        // Se settings não foi fornecido, usar os settings atuais do workflow
+        // O schema requer que settings sempre exista
+        if (workflow.settings) {
+          updateData.settings = workflow.settings;
+        } else {
+          // Fallback: criar settings padrão
+          updateData.settings = {
+            openRouterKey: "",
+            theme: "dark"
+          };
+        }
       }
       
-      console.error('[ALTERNATIVE] Before db.patch, updateData keys:', Object.keys(updateData));
-      console.error('[ALTERNATIVE] updateData content:', JSON.stringify(updateData).substring(0, 2000));
+      // #region agent log
+      const logEntry3 = {
+        sessionId: 'debug-session',
+        runId: 'run1',
+        hypothesisId: 'C',
+        location: 'convex/workflows.ts:updateWorkflowWithJsonNodes:beforePatch',
+        message: 'Before db.patch - updateData prepared',
+        data: {
+          updateDataKeys: Object.keys(updateData),
+          hasSettings: updateData.settings !== undefined,
+          settingsType: typeof updateData.settings,
+          settingsKeys: updateData.settings ? Object.keys(updateData.settings) : null,
+          nodesCount: updateData.nodes?.length,
+          edgesCount: updateData.edges?.length,
+          updateDataStringified: JSON.stringify(updateData).substring(0, 2000)
+        },
+        timestamp: Date.now()
+      };
+      console.error('[DEBUG BACKEND]', JSON.stringify(logEntry3));
+      // #endregion
       
       // Validar updateData antes de fazer patch
       if (updateData.nodes) {
-        console.error('[ALTERNATIVE] Validating nodes before patch, count:', updateData.nodes.length);
         for (let i = 0; i < updateData.nodes.length; i++) {
           const node = updateData.nodes[i];
           if (!node.id || typeof node.id !== 'string') {
@@ -444,15 +470,52 @@ export const updateWorkflowWithJsonNodes = mutation({
         }
       }
       
+      // #region agent log
+      const logEntry4 = {
+        sessionId: 'debug-session',
+        runId: 'run1',
+        hypothesisId: 'D',
+        location: 'convex/workflows.ts:updateWorkflowWithJsonNodes:beforePatchCall',
+        message: 'About to call db.patch',
+        data: {
+          updateDataKeys: Object.keys(updateData),
+          updateDataStringified: JSON.stringify(updateData).substring(0, 2000)
+        },
+        timestamp: Date.now()
+      };
+      console.error('[DEBUG BACKEND]', JSON.stringify(logEntry4));
+      // #endregion
+      
       await ctx.db.patch(args.id, updateData);
-      console.error('[ALTERNATIVE] db.patch succeeded');
+      
+      // #region agent log
+      const logEntry5 = {
+        sessionId: 'debug-session',
+        runId: 'run1',
+        hypothesisId: 'E',
+        location: 'convex/workflows.ts:updateWorkflowWithJsonNodes:patchSuccess',
+        message: 'db.patch succeeded',
+        data: {},
+        timestamp: Date.now()
+      };
+      console.error('[DEBUG BACKEND]', JSON.stringify(logEntry5));
+      // #endregion
+      
       return args.id;
     } catch (error: any) {
-      console.error('[ALTERNATIVE ERROR]', error);
-      console.error('[ALTERNATIVE ERROR] Message:', error.message);
-      console.error('[ALTERNATIVE ERROR] Stack:', error.stack);
-      console.error('[ALTERNATIVE ERROR] Args received:', JSON.stringify(args).substring(0, 1000));
-      throw new Error(`Erro ao atualizar workflow: ${error.message || String(error)}`);
+      console.error("[ERROR] Erro em updateWorkflowWithJsonNodes:", {
+        message: error?.message,
+        name: error?.name,
+        stack: error?.stack?.substring(0, 500),
+        workflowId: String(args.id),
+        hasNodesJson: args.nodesJson !== undefined,
+        hasEdgesJson: args.edgesJson !== undefined,
+        hasSettings: args.settings !== undefined
+      });
+      
+      // Re-throw com mensagem mais clara
+      const errorMessage = error?.message || String(error);
+      throw new Error(`Erro ao atualizar workflow: ${errorMessage}`);
     }
   },
 });

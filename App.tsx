@@ -41,6 +41,7 @@ export default function App() {
   const [showSharedList, setShowSharedList] = useState(false);
   const canvasRef = useRef<HTMLDivElement>(null);
   const { isAuthenticated, logout } = useAuth();
+  const preventAutoSaveRef = useRef(false); // Flag para prevenir auto-save após reload
   
   // Validar workflow
   const validationResult = useQuery(api.workflowValidation.validateWorkflow, {
@@ -55,6 +56,9 @@ export default function App() {
   useEffect(() => {
     const pendingWorkflowId = localStorage.getItem('pendingWorkflowId');
     if (pendingWorkflowId) {
+      // Prevenir auto-save imediatamente após reload
+      preventAutoSaveRef.current = true;
+      
       // Aguardar workflows carregarem
       if (workflows.length > 0) {
         // Verificar se o workflow existe na lista
@@ -65,9 +69,15 @@ export default function App() {
           // Restaurar o workflowId
           setCurrentWorkflowId(pendingWorkflowId as Id<'workflows'>);
           setShowWorkflowList(false);
+          
+          // Permitir auto-save após 3 segundos (tempo suficiente para carregar nodes)
+          setTimeout(() => {
+            preventAutoSaveRef.current = false;
+          }, 3000);
         } else {
           // Se o workflow não existe mais, limpar do localStorage
           localStorage.removeItem('pendingWorkflowId');
+          preventAutoSaveRef.current = false;
         }
       }
       // Se workflows ainda não carregaram, manter o pendingWorkflowId e tentar novamente quando carregarem
@@ -77,15 +87,82 @@ export default function App() {
   // Carregar workflow atual
   useEffect(() => {
     if (currentWorkflow) {
-      setNodes(currentWorkflow.nodes || []);
-      setEdges(currentWorkflow.edges || []);
+      // Prevenir auto-save durante o carregamento inicial
+      preventAutoSaveRef.current = true;
+      
+      // Carregar nodes e edges do workflow
+      const workflowNodes = currentWorkflow.nodes || [];
+      const workflowEdges = currentWorkflow.edges || [];
+      
+      // Validar e limpar nodes antes de definir
+      const validNodes = workflowNodes.filter(node => {
+        // Garantir que node tem estrutura válida
+        const isValid = node && 
+               typeof node.id === 'string' && 
+               node.id.length > 0 &&
+               typeof node.type === 'string' &&
+               node.position &&
+               typeof node.position.x === 'number' &&
+               typeof node.position.y === 'number';
+        
+        // Log detalhado para nodes inválidos (especialmente GitHub)
+        if (!isValid && node?.type === 'github-repo') {
+          console.error('⚠️ Node GitHub inválido detectado:', {
+            id: node?.id,
+            type: node?.type,
+            hasPosition: !!node?.position,
+            position: node?.position
+          });
+        }
+        
+        return isValid;
+      });
+      
+      // Log para debug se nodes foram filtrados
+      if (validNodes.length !== workflowNodes.length) {
+        const filteredNodes = workflowNodes.filter(node => {
+          const isValid = node && 
+                 typeof node.id === 'string' && 
+                 node.id.length > 0 &&
+                 typeof node.type === 'string' &&
+                 node.position &&
+                 typeof node.position.x === 'number' &&
+                 typeof node.position.y === 'number';
+          return !isValid;
+        });
+        
+        console.warn(`⚠️ ${workflowNodes.length - validNodes.length} node(s) inválido(s) foram filtrados ao carregar workflow:`, 
+          filteredNodes.map(n => ({ id: n?.id, type: n?.type }))
+        );
+      }
+      
+      // Garantir que todos os nodes GitHub foram preservados
+      const githubNodesInOriginal = workflowNodes.filter(n => n?.type === 'github-repo');
+      const githubNodesInValid = validNodes.filter(n => n?.type === 'github-repo');
+      if (githubNodesInOriginal.length !== githubNodesInValid.length) {
+        console.error('❌ ERRO: Nodes GitHub foram removidos durante validação!', {
+          original: githubNodesInOriginal.length,
+          valid: githubNodesInValid.length,
+          removed: githubNodesInOriginal.filter(n => !validNodes.some(v => v.id === n.id))
+        });
+      }
+      
+      setNodes(validNodes);
+      setEdges(workflowEdges || []);
+      
       const workflowSettings = currentWorkflow.settings || { openRouterKey: '', theme: 'dark' };
       setSettings({
         openRouterKey: workflowSettings.openRouterKey || '',
         theme: workflowSettings.theme || 'dark',
       });
+      
       // Fechar lista quando workflow é carregado
       setShowWorkflowList(false);
+      
+      // Permitir auto-save após 2 segundos (tempo para nodes serem renderizados)
+      setTimeout(() => {
+        preventAutoSaveRef.current = false;
+      }, 2000);
     } else {
       // Se não há workflow, verificar se há pendingWorkflowId antes de mostrar lista
       const pendingWorkflowId = localStorage.getItem('pendingWorkflowId');
@@ -99,6 +176,12 @@ export default function App() {
   // Auto-save com debounce
   const saveWorkflow = useCallback(async () => {
     if (!currentWorkflow) return;
+
+    // Prevenir auto-save se estiver bloqueado (ex: após reload)
+    if (preventAutoSaveRef.current) {
+      console.log('⏸️ Auto-save bloqueado temporariamente (após reload)');
+      return;
+    }
 
     // Não tentar salvar se não houver nodes ou edges válidos
     if (!Array.isArray(nodes) || !Array.isArray(edges)) {
@@ -278,33 +361,74 @@ export default function App() {
           id: updateArgs.id,
         };
         
-        // Sempre incluir nodesJson, mesmo se vazio (como string vazia ou "[]")
-        if (updateArgs.nodes !== undefined) {
+        // Incluir nodesJson apenas se houver nodes (não enviar se vazio)
+        if (updateArgs.nodes !== undefined && Array.isArray(updateArgs.nodes) && updateArgs.nodes.length > 0) {
           alternativeArgs.nodesJson = JSON.stringify(updateArgs.nodes);
-        } else {
+        } else if (updateArgs.nodes !== undefined && Array.isArray(updateArgs.nodes) && updateArgs.nodes.length === 0) {
+          // Se nodes é array vazio, enviar como string "[]"
           alternativeArgs.nodesJson = '[]';
         }
+        // Se nodes é undefined, não incluir nodesJson (será undefined no backend)
         
-        // Sempre incluir edgesJson, mesmo se vazio
-        if (updateArgs.edges !== undefined) {
+        // Incluir edgesJson apenas se houver edges (não enviar se vazio)
+        if (updateArgs.edges !== undefined && Array.isArray(updateArgs.edges) && updateArgs.edges.length > 0) {
           alternativeArgs.edgesJson = JSON.stringify(updateArgs.edges);
-        } else {
+        } else if (updateArgs.edges !== undefined && Array.isArray(updateArgs.edges) && updateArgs.edges.length === 0) {
+          // Se edges é array vazio, enviar como string "[]"
           alternativeArgs.edgesJson = '[]';
         }
+        // Se edges é undefined, não incluir edgesJson (será undefined no backend)
         
-        // Incluir settings se fornecido
+        // Incluir settings se fornecido - GARANTIR estrutura válida
         if (updateArgs.settings !== undefined) {
-          alternativeArgs.settings = updateArgs.settings;
+          // Validar e normalizar settings antes de enviar
+          const validSettings = {
+            openRouterKey: typeof updateArgs.settings.openRouterKey === 'string' 
+              ? updateArgs.settings.openRouterKey 
+              : '',
+            theme: (updateArgs.settings.theme === 'dark' || updateArgs.settings.theme === 'light')
+              ? updateArgs.settings.theme
+              : 'dark'
+          };
+          alternativeArgs.settings = validSettings;
         }
+
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/a7576830-f069-47f1-89e2-c0c545ca634b', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'A',location:'App.tsx:beforeMutationCall',message:'Before calling updateWorkflowWithJsonNodes',data:{alternativeArgsKeys:Object.keys(alternativeArgs),nodesJsonType:typeof alternativeArgs.nodesJson,nodesJsonLength:alternativeArgs.nodesJson?.length,edgesJsonType:typeof alternativeArgs.edgesJson,edgesJsonLength:alternativeArgs.edgesJson?.length,hasSettings:!!alternativeArgs.settings,settingsType:typeof alternativeArgs.settings,settingsKeys:alternativeArgs.settings?Object.keys(alternativeArgs.settings):null,alternativeArgsStringified:JSON.stringify(alternativeArgs).substring(0,2000)},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion
         
+        console.log('[DEBUG FRONTEND] About to call updateWorkflowWithJsonNodes with:', {
+          keys: Object.keys(alternativeArgs),
+          nodesJsonType: typeof alternativeArgs.nodesJson,
+          nodesJsonLength: alternativeArgs.nodesJson?.length,
+          edgesJsonType: typeof alternativeArgs.edgesJson,
+          edgesJsonLength: alternativeArgs.edgesJson?.length,
+          hasSettings: !!alternativeArgs.settings,
+          settingsType: typeof alternativeArgs.settings,
+          settingsKeys: alternativeArgs.settings ? Object.keys(alternativeArgs.settings) : null,
+          settingsValue: alternativeArgs.settings,
+          fullArgs: alternativeArgs
+        });
+
         if (!updateWorkflowWithJsonNodes) {
           // Fallback para mutation normal se alternativa não estiver disponível
           await updateWorkflow(updateArgs);
           return;
         }
-        
+
         await updateWorkflowWithJsonNodes(alternativeArgs);
       } catch (callError: any) {
+        // Log detalhado do erro para debug
+        console.error('[ERROR] Erro ao chamar updateWorkflowWithJsonNodes:', {
+          error: callError,
+          message: callError?.message,
+          stack: callError?.stack,
+          alternativeArgs: {
+            ...alternativeArgs,
+            nodesJson: alternativeArgs.nodesJson?.substring(0, 200) + '...',
+            edgesJson: alternativeArgs.edgesJson?.substring(0, 200) + '...',
+          }
+        });
         throw callError;
       }
 
@@ -320,12 +444,18 @@ export default function App() {
       // Não limpar o workflow atual em caso de erro - manter os dados na memória
       // O usuário pode tentar salvar novamente ou fazer outras alterações
       
+      // Se o erro for relacionado a workflow não encontrado, não tentar salvar novamente
+      if (error?.message?.includes('not found') || error?.message?.includes('Workflow not found')) {
+        console.warn('⚠️ Workflow não encontrado, parando tentativas de save');
+        preventAutoSaveRef.current = true;
+      }
+      
       // Resetar para idle após 3 segundos em caso de erro
       setTimeout(() => {
         setSaveStatus('idle');
       }, 3000);
     }
-  }, [currentWorkflow, nodes, edges, settings, updateWorkflow]);
+  }, [currentWorkflow, nodes, edges, settings, updateWorkflow, updateWorkflowWithJsonNodes]);
 
   useEffect(() => {
     if (saveTimeout) {
