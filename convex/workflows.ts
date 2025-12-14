@@ -75,9 +75,18 @@ export const updateWorkflow = mutation({
         argsId: String(args.id),
         argsKeys: Object.keys(args),
         hasNodes: args.nodes !== undefined,
+        nodesType: typeof args.nodes,
+        nodesIsArray: Array.isArray(args.nodes),
+        nodesCount: args.nodes?.length || 0,
         hasEdges: args.edges !== undefined,
+        edgesType: typeof args.edges,
+        edgesIsArray: Array.isArray(args.edges),
+        edgesCount: args.edges?.length || 0,
         hasSettings: args.settings !== undefined,
-        argsStringified: JSON.stringify(args).substring(0, 1000)
+        settingsType: typeof args.settings,
+        settingsKeys: args.settings ? Object.keys(args.settings) : null,
+        argsStringified: JSON.stringify(args).substring(0, 2000),
+        argsStringifiedFull: JSON.stringify(args)
       },
       timestamp: Date.now()
     };

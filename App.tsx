@@ -133,10 +133,26 @@ export default function App() {
       // #endregion
 
       // Normalizar settings para garantir valores válidos antes de enviar
+      // Garantir que openRouterKey é sempre string (não null, não undefined)
+      const openRouterKeyValue = settings?.openRouterKey;
+      const normalizedOpenRouterKey = (openRouterKeyValue === null || openRouterKeyValue === undefined) 
+        ? '' 
+        : String(openRouterKeyValue);
+      
+      // Garantir que theme é sempre 'dark' ou 'light'
+      const themeValue = settings?.theme;
+      const normalizedTheme = (themeValue === 'dark' || themeValue === 'light') 
+        ? themeValue 
+        : 'dark';
+      
       const normalizedSettings = {
-        openRouterKey: settings?.openRouterKey ?? '',
-        theme: (settings?.theme === 'dark' || settings?.theme === 'light') ? settings.theme : 'dark',
+        openRouterKey: normalizedOpenRouterKey,
+        theme: normalizedTheme,
       };
+      
+      // #region agent log
+      fetch('http://127.0.0.1:7243/ingest/a7576830-f069-47f1-89e2-c0c545ca634b', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'D',location:'App.tsx:normalizeSettings',message:'Settings normalization',data:{originalSettings:settings,normalizedSettings,openRouterKeyType:typeof normalizedOpenRouterKey,themeType:typeof normalizedTheme},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
 
       // Validar e limpar nodes/edges para garantir serialização
       // Usar JSON.parse(JSON.stringify()) para garantir serialização completa e remover referências
@@ -230,7 +246,69 @@ export default function App() {
         updateArgs.edges = cleanEdges;
       }
 
-      await updateWorkflow(updateArgs);
+      // #region agent log
+      // Log detalhado ANTES de chamar updateWorkflow
+      const logBeforeCall = {
+        sessionId: 'debug-session',
+        runId: 'run1',
+        hypothesisId: 'A',
+        location: 'App.tsx:beforeUpdateWorkflow',
+        message: 'Before updateWorkflow call - detailed args',
+        data: {
+          updateArgsKeys: Object.keys(updateArgs),
+          hasNodes: updateArgs.nodes !== undefined,
+          nodesType: typeof updateArgs.nodes,
+          nodesIsArray: Array.isArray(updateArgs.nodes),
+          nodesCount: updateArgs.nodes?.length || 0,
+          nodesSample: updateArgs.nodes ? updateArgs.nodes.slice(0, 2).map((n: any) => ({
+            id: n.id,
+            type: n.type,
+            hasPosition: !!n.position,
+            hasData: !!n.data,
+            dataKeys: n.data ? Object.keys(n.data) : null
+          })) : null,
+          hasEdges: updateArgs.edges !== undefined,
+          edgesType: typeof updateArgs.edges,
+          edgesIsArray: Array.isArray(updateArgs.edges),
+          edgesCount: updateArgs.edges?.length || 0,
+          hasSettings: updateArgs.settings !== undefined,
+          settingsType: typeof updateArgs.settings,
+          settings: updateArgs.settings,
+          settingsKeys: updateArgs.settings ? Object.keys(updateArgs.settings) : null,
+          updateArgsStringified: JSON.stringify(updateArgs).substring(0, 2000),
+          updateArgsStringifiedFull: JSON.stringify(updateArgs)
+        },
+        timestamp: Date.now()
+      };
+      fetch('http://127.0.0.1:7243/ingest/a7576830-f069-47f1-89e2-c0c545ca634b', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logBeforeCall)}).catch(()=>{});
+      console.log('[DEBUG FRONTEND] Before updateWorkflow:', logBeforeCall.data);
+      // #endregion
+
+      try {
+        await updateWorkflow(updateArgs);
+      } catch (callError: any) {
+        // #region agent log
+        const logCallError = {
+          sessionId: 'debug-session',
+          runId: 'run1',
+          hypothesisId: 'A',
+          location: 'App.tsx:updateWorkflowCallError',
+          message: 'updateWorkflow call error caught',
+          data: {
+            errorMessage: callError?.message,
+            errorString: String(callError),
+            errorName: callError?.name,
+            errorStack: callError?.stack?.substring(0, 2000),
+            updateArgsKeys: Object.keys(updateArgs),
+            updateArgsStringified: JSON.stringify(updateArgs).substring(0, 2000)
+          },
+          timestamp: Date.now()
+        };
+        fetch('http://127.0.0.1:7243/ingest/a7576830-f069-47f1-89e2-c0c545ca634b', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logCallError)}).catch(()=>{});
+        console.error('[DEBUG FRONTEND] updateWorkflow call error:', logCallError.data);
+        // #endregion
+        throw callError; // Re-throw para ser capturado pelo catch externo
+      }
 
       // #region agent log
       fetch('http://127.0.0.1:7243/ingest/a7576830-f069-47f1-89e2-c0c545ca634b', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'A',location:'App.tsx:104',message:'updateWorkflow succeeded',data:{},timestamp:Date.now()})}).catch(()=>{});
