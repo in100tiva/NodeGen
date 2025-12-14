@@ -64,84 +64,7 @@ export const updateWorkflow = mutation({
     createVersion: v.optional(v.boolean()), // Auto-save de versão
   },
   handler: async (ctx, args) => {
-    // Log imediato no início do handler para verificar se está sendo chamado
-    // Este log DEVE aparecer no Convex Dashboard se o handler estiver sendo chamado
-    console.error('[DEBUG HANDLER ENTRY] updateWorkflow called with args:', {
-      id: String(args.id),
-      hasNodes: args.nodes !== undefined,
-      nodesCount: args.nodes?.length || 0,
-      hasEdges: args.edges !== undefined,
-      edgesCount: args.edges?.length || 0,
-      hasSettings: args.settings !== undefined,
-      argsKeys: Object.keys(args),
-      argsStringified: JSON.stringify(args).substring(0, 500)
-    });
-    
-    // Se chegou aqui, o handler está sendo chamado
-    // Se este log não aparecer no Convex Dashboard, o erro está na validação de argumentos
-    
-    // #region agent log
-    const logEntry0 = {
-      sessionId: 'debug-session',
-      runId: 'run1',
-      hypothesisId: 'E',
-      location: 'convex/workflows.ts:66',
-      message: 'Handler entry - BEFORE try block',
-      data: {
-        argsId: String(args.id),
-        argsKeys: Object.keys(args),
-        hasNodes: args.nodes !== undefined,
-        nodesType: typeof args.nodes,
-        nodesIsArray: Array.isArray(args.nodes),
-        nodesCount: args.nodes?.length || 0,
-        hasEdges: args.edges !== undefined,
-        edgesType: typeof args.edges,
-        edgesIsArray: Array.isArray(args.edges),
-        edgesCount: args.edges?.length || 0,
-        hasSettings: args.settings !== undefined,
-        settingsType: typeof args.settings,
-        settingsKeys: args.settings ? Object.keys(args.settings) : null,
-        argsStringified: JSON.stringify(args).substring(0, 2000),
-        argsStringifiedFull: JSON.stringify(args)
-      },
-      timestamp: Date.now()
-    };
-    console.error('[DEBUG]', JSON.stringify(logEntry0));
-    // #endregion
-    
     try {
-      // #region agent log
-      const logEntry1 = {
-        sessionId: 'debug-session',
-        runId: 'run1',
-        hypothesisId: 'A',
-        location: 'convex/workflows.ts:66',
-        message: 'updateWorkflow handler entry - args received',
-        data: {
-          id: args.id,
-          hasName: args.name !== undefined,
-          hasDescription: args.description !== undefined,
-          hasNodes: args.nodes !== undefined,
-          nodesIsArray: Array.isArray(args.nodes),
-          nodesCount: args.nodes?.length || 0,
-          hasEdges: args.edges !== undefined,
-          edgesIsArray: Array.isArray(args.edges),
-          edgesCount: args.edges?.length || 0,
-          hasSettings: args.settings !== undefined,
-          settingsType: typeof args.settings,
-          settingsValue: args.settings ? {
-            hasOpenRouterKey: args.settings.openRouterKey !== undefined,
-            openRouterKeyType: typeof args.settings.openRouterKey,
-            openRouterKeyValue: args.settings.openRouterKey === null ? 'null' : (args.settings.openRouterKey === undefined ? 'undefined' : String(args.settings.openRouterKey).substring(0, 20)),
-            hasTheme: args.settings.theme !== undefined,
-            themeType: typeof args.settings.theme,
-            themeValue: args.settings.theme
-          } : null
-        },
-        timestamp: Date.now()
-      };
-      console.error('[DEBUG]', JSON.stringify(logEntry1));
-      // #endregion
       // TODO: Reativar autenticação quando configurada no Convex Dashboard
       // const identity = await ctx.auth.getUserIdentity();
       // if (!identity) {
@@ -152,29 +75,6 @@ export const updateWorkflow = mutation({
       // Temporário: usar um userId fixo para desenvolvimento
       const userId = "dev-user-123";
       const workflow = await ctx.db.get(args.id);
-
-      // #region agent log
-      const logEntry2 = {
-        sessionId: 'debug-session',
-        runId: 'run1',
-        hypothesisId: 'C',
-        location: 'convex/workflows.ts:77',
-        message: 'Workflow fetched from DB',
-        data: {
-          workflowExists: !!workflow,
-          workflowId: workflow?._id,
-          workflowUserId: workflow?.userId,
-          expectedUserId: userId,
-          workflowSettings: workflow?.settings ? {
-            hasOpenRouterKey: workflow.settings.openRouterKey !== undefined,
-            openRouterKeyType: typeof workflow.settings.openRouterKey,
-            theme: workflow.settings.theme
-          } : null
-        },
-        timestamp: Date.now()
-      };
-      console.error('[DEBUG]', JSON.stringify(logEntry2));
-      // #endregion
 
       if (!workflow) {
         throw new Error("Workflow not found");
@@ -245,24 +145,6 @@ export const updateWorkflow = mutation({
           openRouterKey: typeof openRouterKey === "string" ? openRouterKey : "",
           theme: validTheme,
         };
-
-        // #region agent log
-        const logEntry4 = {
-          sessionId: 'debug-session',
-          runId: 'run1',
-          hypothesisId: 'A',
-          location: 'convex/workflows.ts:125',
-          message: 'After settings validation',
-          data: {
-            validatedSettings,
-            openRouterKeyFinal: validatedSettings.openRouterKey,
-            openRouterKeyFinalType: typeof validatedSettings.openRouterKey,
-            themeFinal: validatedSettings.theme
-          },
-          timestamp: Date.now()
-        };
-        console.error('[DEBUG]', JSON.stringify(logEntry4));
-        // #endregion
       }
 
       // Preparar objeto de atualização
@@ -333,11 +215,9 @@ export const updateWorkflow = mutation({
             }
             updateData.edges = args.edges;
           } catch (e: any) {
-            console.error('[DEBUG] Erro ao validar edges:', e.message, args.edges);
             throw new Error(`Erro ao validar edges: ${e.message}`);
           }
         } else {
-          console.error('[DEBUG] edges não é um array:', typeof args.edges, args.edges);
           throw new Error('edges deve ser um array');
         }
       }
@@ -358,100 +238,8 @@ export const updateWorkflow = mutation({
             : "dark"
         };
       }
-
-      // #region agent log
-      const logEntry5 = {
-        sessionId: 'debug-session',
-        runId: 'run1',
-        hypothesisId: 'D',
-        location: 'convex/workflows.ts:148',
-        message: 'Before db.patch - updateData prepared',
-        data: {
-          updateDataKeys: Object.keys(updateData),
-          hasSettings: updateData.settings !== undefined,
-          settingsValue: updateData.settings,
-          nodesCount: updateData.nodes?.length,
-          edgesCount: updateData.edges?.length,
-          updateDataStringified: JSON.stringify(updateData).substring(0, 500)
-        },
-        timestamp: Date.now()
-      };
-      console.error('[DEBUG]', JSON.stringify(logEntry5));
-      // #endregion
-
-      // Tentar fazer o patch com tratamento de erro específico
-      // #region agent log
-      const logEntryBeforePatch = {
-        sessionId: 'debug-session',
-        runId: 'run1',
-        hypothesisId: 'C',
-        location: 'convex/workflows.ts:beforePatch',
-        message: 'Before db.patch - final updateData',
-        data: {
-          updateDataKeys: Object.keys(updateData),
-          updateDataStringified: JSON.stringify(updateData).substring(0, 2000),
-          hasSettings: updateData.settings !== undefined,
-          settingsType: typeof updateData.settings,
-          settingsKeys: updateData.settings ? Object.keys(updateData.settings) : null,
-          nodesCount: updateData.nodes?.length,
-          edgesCount: updateData.edges?.length
-        },
-        timestamp: Date.now()
-      };
-      console.error('[DEBUG]', JSON.stringify(logEntryBeforePatch));
-      // #endregion
       
-      try {
-        await ctx.db.patch(args.id, updateData);
-        
-        // #region agent log
-        const logEntryPatchSuccess = {
-          sessionId: 'debug-session',
-          runId: 'run1',
-          hypothesisId: 'C',
-          location: 'convex/workflows.ts:patchSuccess',
-          message: 'db.patch succeeded',
-          data: {},
-          timestamp: Date.now()
-        };
-        console.error('[DEBUG]', JSON.stringify(logEntryPatchSuccess));
-        // #endregion
-      } catch (patchError: any) {
-        // #region agent log
-        const logEntryPatchError = {
-          sessionId: 'debug-session',
-          runId: 'run1',
-          hypothesisId: 'C',
-          location: 'convex/workflows.ts:patchError',
-          message: 'db.patch error caught',
-          data: {
-            patchErrorMessage: patchError?.message,
-            patchErrorString: String(patchError),
-            patchErrorName: patchError?.name,
-            patchErrorStack: patchError?.stack?.substring(0, 1000),
-            updateDataKeys: Object.keys(updateData),
-            updateDataSample: JSON.stringify(updateData).substring(0, 2000),
-            updateDataSettings: updateData.settings
-          },
-          timestamp: Date.now()
-        };
-        console.error('[DEBUG]', JSON.stringify(logEntryPatchError));
-        // #endregion
-        throw new Error(`Erro ao fazer patch no banco: ${patchError.message || String(patchError)}`);
-      }
-
-      // #region agent log
-      const logEntry6 = {
-        sessionId: 'debug-session',
-        runId: 'run1',
-        hypothesisId: 'D',
-        location: 'convex/workflows.ts:149',
-        message: 'After db.patch - success',
-        data: {},
-        timestamp: Date.now()
-      };
-      console.error('[DEBUG]', JSON.stringify(logEntry6));
-      // #endregion
+      await ctx.db.patch(args.id, updateData);
 
       // TODO: Implementar auto-save de versão quando versions estiver disponível
       // Auto-save de versão se solicitado
@@ -484,30 +272,7 @@ export const updateWorkflow = mutation({
 
       return args.id;
     } catch (error: any) {
-      // #region agent log
-      const logEntry7 = {
-        sessionId: 'debug-session',
-        runId: 'run1',
-        hypothesisId: 'E',
-        location: 'convex/workflows.ts:catch',
-        message: 'Error caught in updateWorkflow catch block',
-        data: {
-          errorMessage: error?.message,
-          errorString: String(error),
-          errorName: error?.name,
-          errorStack: error?.stack?.substring(0, 2000),
-          argsId: String(args.id),
-          argsKeys: Object.keys(args),
-          argsStringified: JSON.stringify(args).substring(0, 2000)
-        },
-        timestamp: Date.now()
-      };
-      console.error('[DEBUG]', JSON.stringify(logEntry7));
-      // #endregion
-
-      // Log do erro para debug
       console.error("Erro em updateWorkflow:", error);
-      console.error("Args recebidos:", JSON.stringify(args, null, 2));
       throw new Error(`Erro ao atualizar workflow: ${error.message || String(error)}`);
     }
   },

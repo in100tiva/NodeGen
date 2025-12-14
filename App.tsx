@@ -20,20 +20,7 @@ export default function App() {
   // Removido useConvexAuth temporariamente até autenticação estar configurada
   const { currentWorkflow, setCurrentWorkflowId } = useWorkflowStore();
   const { updateWorkflow, createWorkflow } = useWorkflowMutations();
-  
-  // Tentar carregar mutation alternativa, com fallback se não estiver disponível
-  let updateWorkflowWithJsonNodes: any = null;
-  try {
-    if (api.workflows.updateWorkflowWithJsonNodes) {
-      updateWorkflowWithJsonNodes = useMutation(api.workflows.updateWorkflowWithJsonNodes);
-      console.log('[DEBUG FRONTEND] updateWorkflowWithJsonNodes mutation loaded');
-    } else {
-      console.warn('[DEBUG FRONTEND] updateWorkflowWithJsonNodes not found in API, will use fallback');
-    }
-  } catch (e: any) {
-    console.warn('[DEBUG FRONTEND] Error loading updateWorkflowWithJsonNodes:', e);
-  }
-  
+  const updateWorkflowWithJsonNodes = useMutation(api.workflows.updateWorkflowWithJsonNodes);
   const executeWorkflowAction = useAction(api.openrouter.executeWorkflow);
   
   // Carregar workflows no store (necessário para restaurar workflow após reload)
@@ -121,31 +108,6 @@ export default function App() {
 
     setSaveStatus('saving');
     try {
-      // #region agent log
-      const logData = {
-        sessionId: 'debug-session',
-        runId: 'run1',
-        hypothesisId: 'A',
-        location: 'App.tsx:98',
-        message: 'Calling updateWorkflow - args before call',
-        data: {
-          workflowId: currentWorkflow._id,
-          nodesCount: nodes?.length || 0,
-          edgesCount: edges?.length || 0,
-          settings: settings ? {
-            hasOpenRouterKey: !!settings.openRouterKey,
-            openRouterKeyType: typeof settings.openRouterKey,
-            theme: settings.theme,
-            themeType: typeof settings.theme
-          } : null,
-          nodesSample: nodes?.slice(0, 2),
-          edgesSample: edges?.slice(0, 2)
-        },
-        timestamp: Date.now()
-      };
-      fetch('http://127.0.0.1:7243/ingest/a7576830-f069-47f1-89e2-c0c545ca634b', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData)}).catch(()=>{});
-      // #endregion
-
       // Normalizar settings para garantir valores válidos antes de enviar
       // Garantir que openRouterKey é sempre string (não null, não undefined)
       const openRouterKeyValue = settings?.openRouterKey;
@@ -163,10 +125,6 @@ export default function App() {
         openRouterKey: normalizedOpenRouterKey,
         theme: normalizedTheme,
       };
-      
-      // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/a7576830-f069-47f1-89e2-c0c545ca634b', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'D',location:'App.tsx:normalizeSettings',message:'Settings normalization',data:{originalSettings:settings,normalizedSettings,openRouterKeyType:typeof normalizedOpenRouterKey,themeType:typeof normalizedTheme},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
 
       // Validar e limpar nodes/edges para garantir serialização
       // Usar JSON.parse(JSON.stringify()) para garantir serialização completa e remover referências
@@ -288,28 +246,6 @@ export default function App() {
         cleanEdges = undefined;
       }
 
-      // #region agent log
-      const logData2 = {
-        sessionId: 'debug-session',
-        runId: 'run1',
-        hypothesisId: 'B',
-        location: 'App.tsx:135',
-        message: 'Before updateWorkflow call - cleaned data',
-        data: {
-          workflowId: currentWorkflow._id,
-          nodesCount: cleanNodes?.length || 0,
-          edgesCount: cleanEdges?.length || 0,
-          nodesSerializable: cleanNodes ? (() => { try { JSON.stringify(cleanNodes); return true; } catch { return false; } })() : null,
-          edgesSerializable: cleanEdges ? (() => { try { JSON.stringify(cleanEdges); return true; } catch { return false; } })() : null,
-          settings: normalizedSettings,
-          nodesSample: cleanNodes?.slice(0, 1),
-          edgesSample: cleanEdges?.slice(0, 1)
-        },
-        timestamp: Date.now()
-      };
-      fetch('http://127.0.0.1:7243/ingest/a7576830-f069-47f1-89e2-c0c545ca634b', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData2)}).catch(()=>{});
-      // #endregion
-
       // Preparar argumentos - só incluir se não forem undefined
       // IMPORTANTE: O Convex pode rejeitar se enviarmos campos com valores inválidos
       const updateArgs: any = {
@@ -334,112 +270,6 @@ export default function App() {
       if (cleanEdges !== undefined && cleanEdges.length > 0) {
         updateArgs.edges = cleanEdges;
       }
-
-      // #region agent log
-      // Log detalhado ANTES de chamar updateWorkflow
-      // Validar estrutura completa antes de enviar
-      const nodesValidation = updateArgs.nodes ? {
-        isArray: Array.isArray(updateArgs.nodes),
-        length: updateArgs.nodes.length,
-        firstNode: updateArgs.nodes[0] ? {
-          id: updateArgs.nodes[0].id,
-          idType: typeof updateArgs.nodes[0].id,
-          type: updateArgs.nodes[0].type,
-          typeType: typeof updateArgs.nodes[0].type,
-          hasPosition: !!updateArgs.nodes[0].position,
-          positionType: typeof updateArgs.nodes[0].position,
-          positionX: updateArgs.nodes[0].position?.x,
-          positionY: updateArgs.nodes[0].position?.y,
-          hasData: !!updateArgs.nodes[0].data,
-          dataType: typeof updateArgs.nodes[0].data,
-          dataKeys: updateArgs.nodes[0].data ? Object.keys(updateArgs.nodes[0].data) : null,
-          hasInputs: Array.isArray(updateArgs.nodes[0].inputs),
-          hasOutputs: Array.isArray(updateArgs.nodes[0].outputs),
-          inputsType: typeof updateArgs.nodes[0].inputs,
-          outputsType: typeof updateArgs.nodes[0].outputs
-        } : null,
-        serializable: (() => { try { JSON.stringify(updateArgs.nodes); return true; } catch(e) { return String(e); } })()
-      } : null;
-      
-      const edgesValidation = updateArgs.edges ? {
-        isArray: Array.isArray(updateArgs.edges),
-        length: updateArgs.edges.length,
-        firstEdge: updateArgs.edges[0] ? {
-          id: updateArgs.edges[0].id,
-          idType: typeof updateArgs.edges[0].id,
-          source: updateArgs.edges[0].source,
-          sourceType: typeof updateArgs.edges[0].source,
-          target: updateArgs.edges[0].target,
-          targetType: typeof updateArgs.edges[0].target
-        } : null,
-        serializable: (() => { try { JSON.stringify(updateArgs.edges); return true; } catch(e) { return String(e); } })()
-      } : null;
-      
-      const settingsValidation = updateArgs.settings ? {
-        type: typeof updateArgs.settings,
-        keys: Object.keys(updateArgs.settings),
-        openRouterKey: updateArgs.settings.openRouterKey,
-        openRouterKeyType: typeof updateArgs.settings.openRouterKey,
-        theme: updateArgs.settings.theme,
-        themeType: typeof updateArgs.settings.theme,
-        isValid: typeof updateArgs.settings.openRouterKey === 'string' && 
-                 (updateArgs.settings.theme === 'dark' || updateArgs.settings.theme === 'light')
-      } : null;
-      
-      const logBeforeCall = {
-        sessionId: 'debug-session',
-        runId: 'run1',
-        hypothesisId: 'A',
-        location: 'App.tsx:beforeUpdateWorkflow',
-        message: 'Before updateWorkflow call - complete validation',
-        data: {
-          updateArgsKeys: Object.keys(updateArgs),
-          workflowId: String(updateArgs.id),
-          nodesValidation,
-          edgesValidation,
-          settingsValidation,
-          updateArgsStringified: JSON.stringify(updateArgs).substring(0, 5000),
-          updateArgsStringifiedFull: JSON.stringify(updateArgs)
-        },
-        timestamp: Date.now()
-      };
-      fetch('http://127.0.0.1:7243/ingest/a7576830-f069-47f1-89e2-c0c545ca634b', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logBeforeCall)}).catch(()=>{});
-      console.log('[DEBUG FRONTEND] Before updateWorkflow:', logBeforeCall.data);
-      console.log('[DEBUG FRONTEND] Full updateArgs:', JSON.stringify(updateArgs, null, 2));
-      console.log('[DEBUG FRONTEND] Nodes validation:', nodesValidation);
-      console.log('[DEBUG FRONTEND] Edges validation:', edgesValidation);
-      console.log('[DEBUG FRONTEND] Settings validation:', settingsValidation);
-      // #endregion
-
-      // Validação final antes de enviar - garantir que não há valores inválidos
-      // #region agent log
-      const finalValidation = {
-        sessionId: 'debug-session',
-        runId: 'run1',
-        hypothesisId: 'A',
-        location: 'App.tsx:finalValidation',
-        message: 'Final validation before updateWorkflow call',
-        data: {
-          hasId: updateArgs.id !== undefined,
-          idType: typeof updateArgs.id,
-          idValue: String(updateArgs.id),
-          hasSettings: updateArgs.settings !== undefined,
-          settingsValid: updateArgs.settings && 
-            typeof updateArgs.settings.openRouterKey === 'string' && 
-            (updateArgs.settings.theme === 'dark' || updateArgs.settings.theme === 'light'),
-          hasNodes: updateArgs.nodes !== undefined,
-          nodesIsArray: updateArgs.nodes ? Array.isArray(updateArgs.nodes) : null,
-          nodesLength: updateArgs.nodes?.length,
-          hasEdges: updateArgs.edges !== undefined,
-          edgesIsArray: updateArgs.edges ? Array.isArray(updateArgs.edges) : null,
-          edgesLength: updateArgs.edges?.length,
-          updateArgsStringified: JSON.stringify(updateArgs)
-        },
-        timestamp: Date.now()
-      };
-      fetch('http://127.0.0.1:7243/ingest/a7576830-f069-47f1-89e2-c0c545ca634b', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(finalValidation)}).catch(()=>{});
-      console.log('[DEBUG FRONTEND] Final validation:', finalValidation.data);
-      // #endregion
 
       try {
         // SEMPRE usar mutation alternativa que recebe JSON string
@@ -467,61 +297,16 @@ export default function App() {
           alternativeArgs.settings = updateArgs.settings;
         }
         
-        // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/a7576830-f069-47f1-89e2-c0c545ca634b', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'F',location:'App.tsx:beforeAlternativeMutation',message:'Calling updateWorkflowWithJsonNodes (always)',data:{alternativeArgsKeys:Object.keys(alternativeArgs),nodesJsonLength:alternativeArgs.nodesJson?.length,hasEdgesJson:!!alternativeArgs.edgesJson,hasSettings:!!alternativeArgs.settings},timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
-        console.log('[DEBUG FRONTEND] Calling updateWorkflowWithJsonNodes (always) with:', alternativeArgs);
-        console.log('[DEBUG FRONTEND] updateWorkflowWithJsonNodes function type:', typeof updateWorkflowWithJsonNodes);
-        console.log('[DEBUG FRONTEND] updateWorkflowWithJsonNodes is null?', updateWorkflowWithJsonNodes === null);
-        console.log('[DEBUG FRONTEND] updateWorkflowWithJsonNodes is undefined?', updateWorkflowWithJsonNodes === undefined);
-        
         if (!updateWorkflowWithJsonNodes) {
-          const error = new Error('updateWorkflowWithJsonNodes mutation is not available');
-          console.error('[DEBUG FRONTEND] updateWorkflowWithJsonNodes is not available, falling back to updateWorkflow');
-          // Fallback para mutation normal
+          // Fallback para mutation normal se alternativa não estiver disponível
           await updateWorkflow(updateArgs);
           return;
         }
         
-        try {
-          await updateWorkflowWithJsonNodes(alternativeArgs);
-          console.log('[DEBUG FRONTEND] updateWorkflowWithJsonNodes succeeded');
-        } catch (mutationError: any) {
-          console.error('[DEBUG FRONTEND] updateWorkflowWithJsonNodes error:', mutationError);
-          console.error('[DEBUG FRONTEND] Error message:', mutationError?.message);
-          console.error('[DEBUG FRONTEND] Error stack:', mutationError?.stack);
-          throw mutationError; // Re-throw para ser capturado pelo catch externo
-        }
-        // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/a7576830-f069-47f1-89e2-c0c545ca634b', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'F',location:'App.tsx:alternativeMutationSuccess',message:'updateWorkflowWithJsonNodes succeeded',data:{},timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
+        await updateWorkflowWithJsonNodes(alternativeArgs);
       } catch (callError: any) {
-        // #region agent log
-        const logCallError = {
-          sessionId: 'debug-session',
-          runId: 'run1',
-          hypothesisId: 'A',
-          location: 'App.tsx:updateWorkflowCallError',
-          message: 'updateWorkflow call error caught',
-          data: {
-            errorMessage: callError?.message,
-            errorString: String(callError),
-            errorName: callError?.name,
-            errorStack: callError?.stack?.substring(0, 2000),
-            updateArgsKeys: Object.keys(updateArgs),
-            updateArgsStringified: JSON.stringify(updateArgs).substring(0, 2000)
-          },
-          timestamp: Date.now()
-        };
-        fetch('http://127.0.0.1:7243/ingest/a7576830-f069-47f1-89e2-c0c545ca634b', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logCallError)}).catch(()=>{});
-        console.error('[DEBUG FRONTEND] updateWorkflow call error:', logCallError.data);
-        // #endregion
-        throw callError; // Re-throw para ser capturado pelo catch externo
+        throw callError;
       }
-
-      // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/a7576830-f069-47f1-89e2-c0c545ca634b', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'A',location:'App.tsx:104',message:'updateWorkflow succeeded',data:{},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
 
       setSaveStatus('saved');
       // Resetar para idle após 2 segundos
@@ -529,10 +314,6 @@ export default function App() {
         setSaveStatus('idle');
       }, 2000);
     } catch (error: any) {
-      // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/a7576830-f069-47f1-89e2-c0c545ca634b', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'A',location:'App.tsx:109',message:'updateWorkflow error caught',data:{errorMessage:error?.message,errorString:String(error),errorStack:error?.stack},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
-
       console.error('Error saving workflow:', error);
       setSaveStatus('error');
       
