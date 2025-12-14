@@ -527,6 +527,7 @@ export const updateWorkflowWithJsonNodes = mutation({
     ),
   },
   handler: async (ctx, args) => {
+    // Log imediato no início - DEVE aparecer no Convex Dashboard
     console.error('[ALTERNATIVE HANDLER ENTRY] updateWorkflowWithJsonNodes called with:', {
       id: String(args.id),
       hasNodesJson: args.nodesJson !== undefined,
@@ -534,7 +535,8 @@ export const updateWorkflowWithJsonNodes = mutation({
       hasEdgesJson: args.edgesJson !== undefined,
       edgesJsonLength: args.edgesJson?.length || 0,
       hasSettings: args.settings !== undefined,
-      argsKeys: Object.keys(args)
+      argsKeys: Object.keys(args),
+      argsStringified: JSON.stringify(args).substring(0, 1000)
     });
     
     try {
