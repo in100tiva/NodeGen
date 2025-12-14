@@ -1,8 +1,8 @@
 import React from 'react';
-import { useQuery } from 'convex/react';
+import { useQuery, useMutation } from 'convex/react';
 import { api } from '../convex/_generated/api';
 import { Id } from '../convex/_generated/dataModel';
-import { IconPlus } from './Icons';
+import { IconPlus, IconTrash } from './Icons';
 
 interface WorkflowListProps {
   onSelectWorkflow: (workflowId: Id<'workflows'>) => void;
@@ -12,6 +12,7 @@ interface WorkflowListProps {
 const WorkflowList: React.FC<WorkflowListProps> = ({ onSelectWorkflow, onCreateWorkflow }) => {
   const workflowsQuery = useQuery(api.workflows.listWorkflows, {});
   const workflows = workflowsQuery || [];
+  const deleteWorkflow = useMutation(api.workflows.deleteWorkflow);
 
   // Debug: verificar se workflows estão sendo carregados
   React.useEffect(() => {
@@ -48,16 +49,35 @@ const WorkflowList: React.FC<WorkflowListProps> = ({ onSelectWorkflow, onCreateW
           {workflows.map((workflow: any) => (
             <div
               key={workflow._id}
-              onClick={() => onSelectWorkflow(workflow._id)}
-              className="p-6 bg-surface border border-border rounded-lg cursor-pointer hover:border-accent transition-colors"
+              className="p-6 bg-surface border border-border rounded-lg hover:border-accent transition-colors relative group"
             >
-              <h3 className="text-lg font-semibold mb-2">{workflow.name}</h3>
-              {workflow.description && (
-                <p className="text-sm text-zinc-400 mb-4">{workflow.description}</p>
-              )}
-              <div className="text-xs text-zinc-500">
-                {workflow.nodes?.length || 0} nós • {workflow.edges?.length || 0} conexões
+              <div
+                onClick={() => onSelectWorkflow(workflow._id)}
+                className="cursor-pointer"
+              >
+                <h3 className="text-lg font-semibold mb-2">{workflow.name}</h3>
+                {workflow.description && (
+                  <p className="text-sm text-zinc-400 mb-4">{workflow.description}</p>
+                )}
+                <div className="text-xs text-zinc-500">
+                  {workflow.nodes?.length || 0} nós • {workflow.edges?.length || 0} conexões
+                </div>
               </div>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (window.confirm(`Tem certeza que deseja deletar o workflow "${workflow.name}"? Esta ação não pode ser desfeita.`)) {
+                    deleteWorkflow({ id: workflow._id }).catch((error) => {
+                      console.error('Erro ao deletar workflow:', error);
+                      alert('Erro ao deletar workflow. Tente novamente.');
+                    });
+                  }
+                }}
+                className="absolute top-4 right-4 p-2 text-zinc-400 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors opacity-0 group-hover:opacity-100"
+                title="Deletar workflow"
+              >
+                <IconTrash className="w-4 h-4" />
+              </button>
             </div>
           ))}
           {workflows.length === 0 && (

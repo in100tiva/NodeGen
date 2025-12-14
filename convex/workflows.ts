@@ -64,6 +64,26 @@ export const updateWorkflow = mutation({
     createVersion: v.optional(v.boolean()), // Auto-save de versão
   },
   handler: async (ctx, args) => {
+    // #region agent log
+    const logEntry0 = {
+      sessionId: 'debug-session',
+      runId: 'run1',
+      hypothesisId: 'E',
+      location: 'convex/workflows.ts:66',
+      message: 'Handler entry - BEFORE try block',
+      data: {
+        argsId: String(args.id),
+        argsKeys: Object.keys(args),
+        hasNodes: args.nodes !== undefined,
+        hasEdges: args.edges !== undefined,
+        hasSettings: args.settings !== undefined,
+        argsStringified: JSON.stringify(args).substring(0, 1000)
+      },
+      timestamp: Date.now()
+    };
+    console.error('[DEBUG]', JSON.stringify(logEntry0));
+    // #endregion
+    
     try {
       // #region agent log
       const logEntry1 = {
@@ -297,15 +317,20 @@ export const updateWorkflow = mutation({
         }
       }
       // Sempre incluir settings no patch para garantir que o schema seja válido
-      // Se não foi fornecido, usar os settings atuais do workflow
+      // Se não foi fornecido, usar os settings atuais do workflow, mas validar/normalizar
       if (validatedSettings !== undefined) {
         updateData.settings = validatedSettings;
       } else {
         // Garantir que settings sempre existe no updateData para validar o schema
-        // Se não foi fornecido, manter os settings atuais
-        updateData.settings = workflow.settings || {
-          openRouterKey: "",
-          theme: "dark"
+        // Validar e normalizar os settings atuais do workflow para garantir estrutura correta
+        const currentSettings = workflow.settings;
+        updateData.settings = {
+          openRouterKey: (currentSettings && typeof currentSettings.openRouterKey === 'string') 
+            ? currentSettings.openRouterKey 
+            : "",
+          theme: (currentSettings && (currentSettings.theme === 'dark' || currentSettings.theme === 'light'))
+            ? currentSettings.theme
+            : "dark"
         };
       }
 
@@ -330,23 +355,58 @@ export const updateWorkflow = mutation({
       // #endregion
 
       // Tentar fazer o patch com tratamento de erro específico
+      // #region agent log
+      const logEntryBeforePatch = {
+        sessionId: 'debug-session',
+        runId: 'run1',
+        hypothesisId: 'C',
+        location: 'convex/workflows.ts:beforePatch',
+        message: 'Before db.patch - final updateData',
+        data: {
+          updateDataKeys: Object.keys(updateData),
+          updateDataStringified: JSON.stringify(updateData).substring(0, 2000),
+          hasSettings: updateData.settings !== undefined,
+          settingsType: typeof updateData.settings,
+          settingsKeys: updateData.settings ? Object.keys(updateData.settings) : null,
+          nodesCount: updateData.nodes?.length,
+          edgesCount: updateData.edges?.length
+        },
+        timestamp: Date.now()
+      };
+      console.error('[DEBUG]', JSON.stringify(logEntryBeforePatch));
+      // #endregion
+      
       try {
         await ctx.db.patch(args.id, updateData);
+        
+        // #region agent log
+        const logEntryPatchSuccess = {
+          sessionId: 'debug-session',
+          runId: 'run1',
+          hypothesisId: 'C',
+          location: 'convex/workflows.ts:patchSuccess',
+          message: 'db.patch succeeded',
+          data: {},
+          timestamp: Date.now()
+        };
+        console.error('[DEBUG]', JSON.stringify(logEntryPatchSuccess));
+        // #endregion
       } catch (patchError: any) {
         // #region agent log
         const logEntryPatchError = {
           sessionId: 'debug-session',
           runId: 'run1',
-          hypothesisId: 'F',
-          location: 'convex/workflows.ts:patch',
+          hypothesisId: 'C',
+          location: 'convex/workflows.ts:patchError',
           message: 'db.patch error caught',
           data: {
             patchErrorMessage: patchError?.message,
             patchErrorString: String(patchError),
             patchErrorName: patchError?.name,
-            patchErrorStack: patchError?.stack?.substring(0, 500),
+            patchErrorStack: patchError?.stack?.substring(0, 1000),
             updateDataKeys: Object.keys(updateData),
-            updateDataSample: JSON.stringify(updateData).substring(0, 1000)
+            updateDataSample: JSON.stringify(updateData).substring(0, 2000),
+            updateDataSettings: updateData.settings
           },
           timestamp: Date.now()
         };
@@ -404,15 +464,16 @@ export const updateWorkflow = mutation({
         sessionId: 'debug-session',
         runId: 'run1',
         hypothesisId: 'E',
-        location: 'convex/workflows.ts:181',
-        message: 'Error caught in updateWorkflow',
+        location: 'convex/workflows.ts:catch',
+        message: 'Error caught in updateWorkflow catch block',
         data: {
           errorMessage: error?.message,
           errorString: String(error),
           errorName: error?.name,
-          errorStack: error?.stack?.substring(0, 500),
-          argsId: args.id,
-          argsKeys: Object.keys(args)
+          errorStack: error?.stack?.substring(0, 2000),
+          argsId: String(args.id),
+          argsKeys: Object.keys(args),
+          argsStringified: JSON.stringify(args).substring(0, 2000)
         },
         timestamp: Date.now()
       };
