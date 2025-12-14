@@ -1,5 +1,4 @@
-import { useConvexAuth } from "@convex-dev/auth/react";
-import { useQuery } from "convex/react";
+import { useConvexAuth, useQuery } from "convex/react";
 import { api } from "../convex/_generated/api";
 
 export function useAuth() {
