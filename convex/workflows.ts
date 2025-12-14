@@ -65,13 +65,20 @@ export const updateWorkflow = mutation({
   },
   handler: async (ctx, args) => {
     // Log imediato no início do handler para verificar se está sendo chamado
+    // Este log DEVE aparecer no Convex Dashboard se o handler estiver sendo chamado
     console.error('[DEBUG HANDLER ENTRY] updateWorkflow called with args:', {
       id: String(args.id),
       hasNodes: args.nodes !== undefined,
+      nodesCount: args.nodes?.length || 0,
       hasEdges: args.edges !== undefined,
+      edgesCount: args.edges?.length || 0,
       hasSettings: args.settings !== undefined,
-      argsKeys: Object.keys(args)
+      argsKeys: Object.keys(args),
+      argsStringified: JSON.stringify(args).substring(0, 500)
     });
+    
+    // Se chegou aqui, o handler está sendo chamado
+    // Se este log não aparecer no Convex Dashboard, o erro está na validação de argumentos
     
     // #region agent log
     const logEntry0 = {
