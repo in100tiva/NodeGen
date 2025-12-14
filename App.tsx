@@ -234,10 +234,24 @@ export default function App() {
       // #endregion
 
       // Preparar argumentos - só incluir se não forem undefined
+      // IMPORTANTE: O Convex pode rejeitar se enviarmos campos com valores inválidos
       const updateArgs: any = {
         id: currentWorkflow._id,
-        settings: normalizedSettings,
       };
+      
+      // Sempre incluir settings (é obrigatório no schema da tabela)
+      // Mas garantir que tem a estrutura correta
+      if (normalizedSettings && 
+          typeof normalizedSettings.openRouterKey === 'string' && 
+          (normalizedSettings.theme === 'dark' || normalizedSettings.theme === 'light')) {
+        updateArgs.settings = normalizedSettings;
+      } else {
+        // Se settings inválido, usar valores padrão
+        updateArgs.settings = {
+          openRouterKey: '',
+          theme: 'dark'
+        };
+      }
       
       if (cleanNodes !== undefined) {
         updateArgs.nodes = cleanNodes;
