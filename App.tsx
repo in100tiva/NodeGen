@@ -468,8 +468,21 @@ export default function App() {
           fetch('http://127.0.0.1:7243/ingest/a7576830-f069-47f1-89e2-c0c545ca634b', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'F',location:'App.tsx:beforeAlternativeMutation',message:'Calling updateWorkflowWithJsonNodes',data:{alternativeArgsKeys:Object.keys(alternativeArgs),nodesJsonLength:alternativeArgs.nodesJson?.length,hasEdgesJson:!!alternativeArgs.edgesJson,hasSettings:!!alternativeArgs.settings},timestamp:Date.now()})}).catch(()=>{});
           // #endregion
           console.log('[DEBUG FRONTEND] Calling updateWorkflowWithJsonNodes with:', alternativeArgs);
-          await updateWorkflowWithJsonNodes(alternativeArgs);
-          console.log('[DEBUG FRONTEND] updateWorkflowWithJsonNodes succeeded');
+          try {
+            await updateWorkflowWithJsonNodes(alternativeArgs);
+            console.log('[DEBUG FRONTEND] updateWorkflowWithJsonNodes succeeded');
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/a7576830-f069-47f1-89e2-c0c545ca634b', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'F',location:'App.tsx:alternativeMutationSuccess',message:'updateWorkflowWithJsonNodes succeeded',data:{},timestamp:Date.now()})}).catch(()=>{});
+            // #endregion
+          } catch (altError: any) {
+            console.error('[DEBUG FRONTEND] updateWorkflowWithJsonNodes failed:', altError);
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/a7576830-f069-47f1-89e2-c0c545ca634b', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'F',location:'App.tsx:alternativeMutationError',message:'updateWorkflowWithJsonNodes error',data:{errorMessage:altError?.message,errorString:String(altError),errorStack:altError?.stack},timestamp:Date.now()})}).catch(()=>{});
+            // #endregion
+            // Se a mutation alternativa falhar, tentar a mutation normal como fallback
+            console.log('[DEBUG FRONTEND] Falling back to updateWorkflow');
+            await updateWorkflow(updateArgs);
+          }
         } else {
           // Se não houver nodes, usar mutation normal
           // #region agent log
