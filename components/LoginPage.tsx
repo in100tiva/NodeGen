@@ -80,8 +80,10 @@ const LoginPage: React.FC = () => {
       
       const errorMessage = err?.message || String(err) || 'Erro ao fazer login com GitHub. Tente novamente.';
       
-      // Verificar se é erro de redirect_uri
-      if (errorMessage.includes('redirect_uri') || String(err).includes('redirect_uri')) {
+      // Verificar se é erro de rate limit do GitHub
+      if (errorMessage.includes('429') || errorMessage.includes('Too Many Requests') || String(err).includes('429')) {
+        setError('rate_limit');
+      } else if (errorMessage.includes('redirect_uri') || String(err).includes('redirect_uri')) {
         setError('redirect_uri');
       } else if (errorMessage.includes('Server Error') || errorMessage.includes('CONVEX')) {
         // Erro do servidor Convex - fornecer informações mais detalhadas
@@ -142,7 +144,28 @@ const LoginPage: React.FC = () => {
               <div className="flex items-start gap-2 mb-2">
                 <IconAlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
                 <div className="flex-1">
-                  {error === 'redirect_uri' ? (
+                  {error === 'rate_limit' ? (
+                    <>
+                      <p className="text-sm font-medium text-yellow-400 mb-2">
+                        ⚠️ Muitas tentativas de login
+                      </p>
+                      <p className="text-xs text-yellow-300/80 mb-3">
+                        O GitHub está limitando as requisições devido a muitas tentativas de autenticação.
+                      </p>
+                      <div className="mt-3 p-3 bg-zinc-800/50 rounded border border-zinc-700">
+                        <p className="text-xs text-zinc-300 mb-2">O que fazer:</p>
+                        <ul className="text-xs text-zinc-400 space-y-1 list-disc list-inside">
+                          <li>Aguarde alguns minutos antes de tentar novamente</li>
+                          <li>Em alguns casos, pode levar até 1 hora</li>
+                          <li>Faça logout do GitHub e tente novamente (pode aumentar o limite)</li>
+                          <li>Evite múltiplas tentativas seguidas</li>
+                        </ul>
+                        <p className="text-xs text-emerald-400 mt-3">
+                          ✅ Suas configurações estão corretas! Este é apenas um limite temporário do GitHub.
+                        </p>
+                      </div>
+                    </>
+                  ) : error === 'redirect_uri' ? (
                     <>
                       <p className="text-sm font-medium text-red-400 mb-2">
                         Erro de configuração: redirect_uri não associada à aplicação
@@ -153,7 +176,7 @@ const LoginPage: React.FC = () => {
                       <div className="mt-3 p-3 bg-zinc-800/50 rounded border border-zinc-700">
                         <p className="text-xs text-zinc-400 mb-2">A URL de callback deve ser:</p>
                         <code className="text-xs text-emerald-400 break-all font-mono">
-                          https://cautious-buzzard-249.convex.site/api/auth/callback/github
+                          https://wry-avocet-85.convex.site/api/auth/callback/github
                         </code>
                         <p className="text-xs text-zinc-500 mt-2">
                           ⚠️ IMPORTANTE: A URL deve terminar com <strong>/callback/github</strong>
