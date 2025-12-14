@@ -316,18 +316,29 @@ export const updateWorkflowWithJsonNodes = mutation({
         id: String(workflow._id),
         nodesCount: workflow.nodes?.length || 0,
         edgesCount: workflow.edges?.length || 0,
-        hasSettings: !!workflow.settings
+        hasSettings: !!workflow.settings,
+        workflowUserId: workflow.userId
       });
       
-      // TODO: Reativar autenticação quando configurada no Convex Dashboard
-      // const identity = await ctx.auth.getUserIdentity();
-      // if (!identity) {
-      //   throw new Error("Not authenticated");
-      // }
-      // const userId = identity.tokenIdentifier;
-      
-      // Temporário: usar um userId fixo para desenvolvimento
-      const userId = "dev-user-123";
+      // Autenticação: tentar obter userId do contexto, mas usar fallback se não configurado
+      let userId: string;
+      try {
+        // Tentar obter autenticação se estiver configurada
+        // @ts-ignore - ctx.auth pode não estar disponível se auth não estiver configurado
+        const identity = ctx.auth ? await ctx.auth.getUserIdentity() : null;
+        if (identity) {
+          userId = identity.tokenIdentifier;
+          console.log('[DEBUG] Usuário autenticado:', userId);
+        } else {
+          // Fallback: usar userId fixo para desenvolvimento
+          userId = "dev-user-123";
+          console.log('[DEBUG] Autenticação não configurada, usando userId fixo:', userId);
+        }
+      } catch (authError: any) {
+        // Se houver erro ao tentar obter autenticação, usar fallback
+        console.warn('[WARN] Erro ao obter autenticação, usando fallback:', authError?.message);
+        userId = "dev-user-123";
+      }
       
       // Verificar autorização
       if (workflow.userId !== userId) {
@@ -337,6 +348,8 @@ export const updateWorkflowWithJsonNodes = mutation({
         });
         throw new Error("Not authorized");
       }
+      
+      console.log('[DEBUG] Autorização verificada com sucesso');
       
       // Função auxiliar para limpar e validar nodes
       const cleanAndValidateNodes = (nodes: any[]): any[] => {
