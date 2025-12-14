@@ -413,13 +413,21 @@ export default function App() {
           return;
         }
 
+        // Se não há nodesJson nem edgesJson, usar mutation normal (mais simples)
+        if (alternativeArgs.nodesJson === undefined && alternativeArgs.edgesJson === undefined) {
+          console.log('[DEBUG] Sem nodesJson ou edgesJson, usando mutation normal');
+          await updateWorkflow(updateArgs);
+          return;
+        }
+
         await updateWorkflowWithJsonNodes(alternativeArgs);
       } catch (callError: any) {
         // Log detalhado do erro para debug
+        const errorMessage = callError?.message || String(callError);
         console.error('[ERROR] Erro ao chamar updateWorkflowWithJsonNodes:', {
           error: callError,
-          message: callError?.message,
-          stack: callError?.stack,
+          message: errorMessage,
+          stack: callError?.stack?.substring(0, 500),
           alternativeArgs: alternativeArgs ? {
             keys: Object.keys(alternativeArgs),
             hasNodesJson: alternativeArgs.nodesJson !== undefined,
@@ -429,6 +437,24 @@ export default function App() {
             edgesJsonPreview: alternativeArgs.edgesJson?.substring(0, 200),
           } : 'alternativeArgs não definido'
         });
+        
+        // Se o erro for "Server Error" genérico, tentar fallback para mutation normal
+        if (errorMessage.includes('Server Error') && updateArgs.settings) {
+          console.warn('[WARN] Erro genérico do servidor, tentando fallback para mutation normal');
+          try {
+            // Tentar apenas atualizar settings com mutation normal
+            await updateWorkflow({
+              id: currentWorkflow._id,
+              settings: updateArgs.settings
+            });
+            console.log('[SUCCESS] Fallback para mutation normal funcionou');
+            return;
+          } catch (fallbackError: any) {
+            console.error('[ERROR] Fallback também falhou:', fallbackError);
+            throw callError; // Re-throw o erro original
+          }
+        }
+        
         throw callError;
       }
 

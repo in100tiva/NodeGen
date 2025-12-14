@@ -319,13 +319,91 @@ export const updateWorkflowWithJsonNodes = mutation({
         throw new Error("Not authorized");
       }
       
-      // Inicializar updateData com valores atuais do workflow
+      // Função auxiliar para limpar e validar nodes
+      const cleanAndValidateNodes = (nodes: any[]): any[] => {
+        if (!Array.isArray(nodes)) {
+          console.warn('[WARN] nodes não é array, retornando array vazio');
+          return [];
+        }
+        const cleaned: any[] = [];
+        for (const node of nodes) {
+          if (!node || typeof node !== 'object') continue;
+          if (!node.id || typeof node.id !== 'string') continue;
+          if (!node.type || typeof node.type !== 'string') continue;
+          if (!node.position || typeof node.position.x !== 'number' || typeof node.position.y !== 'number') continue;
+          if (!node.data || typeof node.data !== 'object') continue;
+          if (!Array.isArray(node.inputs)) continue;
+          if (!Array.isArray(node.outputs)) continue;
+          
+          // Criar node limpo
+          const cleanedNode: any = {
+            id: String(node.id),
+            type: String(node.type),
+            position: {
+              x: node.position.x,
+              y: node.position.y
+            },
+            data: {},
+            inputs: node.inputs.map(String),
+            outputs: node.outputs.map(String)
+          };
+          
+          // Copiar apenas campos primitivos de node.data
+          for (const key in node.data) {
+            if (key.startsWith('_')) continue;
+            const value = node.data[key];
+            if (value !== undefined && value !== null && typeof value !== 'function') {
+              if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+                cleanedNode.data[key] = value;
+              }
+            }
+          }
+          
+          if (!cleanedNode.data.label) {
+            cleanedNode.data.label = String(node.data?.label || node.type || 'Node');
+          }
+          
+          cleaned.push(cleanedNode);
+        }
+        return cleaned;
+      };
+      
+      // Função auxiliar para limpar e validar edges
+      const cleanAndValidateEdges = (edges: any[]): any[] => {
+        if (!Array.isArray(edges)) {
+          console.warn('[WARN] edges não é array, retornando array vazio');
+          return [];
+        }
+        const cleaned: any[] = [];
+        for (const edge of edges) {
+          if (!edge || typeof edge !== 'object') continue;
+          if (!edge.id || typeof edge.id !== 'string') continue;
+          if (!edge.source || typeof edge.source !== 'string') continue;
+          if (!edge.target || typeof edge.target !== 'string') continue;
+          
+          const cleanedEdge: any = {
+            id: String(edge.id),
+            source: String(edge.source),
+            target: String(edge.target),
+          };
+          if (edge.sourceHandle !== undefined) {
+            cleanedEdge.sourceHandle = String(edge.sourceHandle);
+          }
+          if (edge.targetHandle !== undefined) {
+            cleanedEdge.targetHandle = String(edge.targetHandle);
+          }
+          cleaned.push(cleanedEdge);
+        }
+        return cleaned;
+      };
+      
+      // Inicializar updateData com valores atuais do workflow (limpos e validados)
       // Isso garante que o schema sempre tenha nodes e edges válidos
       const updateData: any = {
         updatedAt: Date.now(),
-        // Incluir nodes e edges atuais como padrão (serão sobrescritos se fornecidos)
-        nodes: workflow.nodes || [],
-        edges: workflow.edges || [],
+        // Limpar e validar nodes e edges atuais antes de usar
+        nodes: cleanAndValidateNodes(workflow.nodes || []),
+        edges: cleanAndValidateEdges(workflow.edges || []),
       };
       
       // Parse nodes de JSON string
