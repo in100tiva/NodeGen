@@ -187,9 +187,35 @@ export default function App() {
                 y: typeof node.position.y === 'number' ? node.position.y : 0
               };
             }
-            // Garantir que data é objeto
+            // Garantir que data é objeto e limpar valores inválidos
             if (!node.data || typeof node.data !== 'object') {
               node.data = { label: '' };
+            } else {
+              // Limpar node.data para garantir que todos os valores são serializáveis
+              // Remover undefined, null, functions, etc.
+              const cleanedData: any = {};
+              for (const key in node.data) {
+                const value = node.data[key];
+                // Só incluir valores serializáveis
+                if (value !== undefined && value !== null && typeof value !== 'function') {
+                  try {
+                    JSON.stringify(value);
+                    cleanedData[key] = value;
+                  } catch (e) {
+                    // Se não for serializável, converter para string ou remover
+                    if (typeof value === 'object') {
+                      cleanedData[key] = {};
+                    } else {
+                      cleanedData[key] = String(value);
+                    }
+                  }
+                }
+              }
+              // Garantir que label sempre existe
+              if (!cleanedData.label) {
+                cleanedData.label = '';
+              }
+              node.data = cleanedData;
             }
             // Garantir que inputs e outputs são arrays
             if (!Array.isArray(node.inputs)) {
