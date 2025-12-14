@@ -53,19 +53,23 @@ export default function App() {
   // Restaurar workflowId após reload (ex: após autorização GitHub)
   useEffect(() => {
     const pendingWorkflowId = localStorage.getItem('pendingWorkflowId');
-    if (pendingWorkflowId && !currentWorkflow && workflows.length > 0) {
-      // Verificar se o workflow existe na lista
-      const workflowExists = workflows.some(w => w._id === pendingWorkflowId);
-      if (workflowExists) {
-        // Limpar do localStorage imediatamente para evitar loops
-        localStorage.removeItem('pendingWorkflowId');
-        // Restaurar o workflowId
-        setCurrentWorkflowId(pendingWorkflowId as Id<'workflows'>);
-        setShowWorkflowList(false);
-      } else {
-        // Se o workflow não existe mais, limpar do localStorage
-        localStorage.removeItem('pendingWorkflowId');
+    if (pendingWorkflowId) {
+      // Aguardar workflows carregarem
+      if (workflows.length > 0) {
+        // Verificar se o workflow existe na lista
+        const workflowExists = workflows.some(w => w._id === pendingWorkflowId);
+        if (workflowExists) {
+          // Limpar do localStorage imediatamente para evitar loops
+          localStorage.removeItem('pendingWorkflowId');
+          // Restaurar o workflowId
+          setCurrentWorkflowId(pendingWorkflowId as Id<'workflows'>);
+          setShowWorkflowList(false);
+        } else {
+          // Se o workflow não existe mais, limpar do localStorage
+          localStorage.removeItem('pendingWorkflowId');
+        }
       }
+      // Se workflows ainda não carregaram, manter o pendingWorkflowId e tentar novamente quando carregarem
     }
   }, [workflows, currentWorkflow, setCurrentWorkflowId]); // Executar quando workflows forem carregados
 
@@ -79,19 +83,27 @@ export default function App() {
         openRouterKey: workflowSettings.openRouterKey || '',
         theme: workflowSettings.theme || 'dark',
       });
-      // Só fechar lista se não estiver explicitamente mostrando a lista
-      if (!showWorkflowList) {
-        setShowWorkflowList(false);
+      // Fechar lista quando workflow é carregado
+      setShowWorkflowList(false);
+    } else {
+      // Se não há workflow, verificar se há pendingWorkflowId antes de mostrar lista
+      const pendingWorkflowId = localStorage.getItem('pendingWorkflowId');
+      if (!pendingWorkflowId && !showWorkflowList) {
+        // Só mostrar lista se não houver pendingWorkflowId aguardando restauração
+        setShowWorkflowList(true);
       }
-    } else if (showWorkflowList) {
-      // Se não há workflow e queremos mostrar lista, garantir que está mostrando
-      setShowWorkflowList(true);
     }
   }, [currentWorkflow, showWorkflowList]);
 
   // Auto-save com debounce
   const saveWorkflow = useCallback(async () => {
     if (!currentWorkflow) return;
+
+    // Não tentar salvar se não houver nodes ou edges válidos
+    if (!Array.isArray(nodes) || !Array.isArray(edges)) {
+      console.warn('Nodes ou edges não são arrays válidos, pulando save');
+      return;
+    }
 
     setSaveStatus('saving');
     try {
@@ -131,26 +143,70 @@ export default function App() {
       let cleanNodes: Node[] | undefined = undefined;
       let cleanEdges: Edge[] | undefined = undefined;
       
-      if (nodes && Array.isArray(nodes) && nodes.length > 0) {
+      if (nodes && Array.isArray(nodes)) {
         try {
-          cleanNodes = JSON.parse(JSON.stringify(nodes));
+          // Limpar nodes removendo qualquer propriedade não serializável
+          cleanNodes = nodes.map(node => ({
+            id: String(node.id),
+            type: node.type,
+            position: {
+              x: typeof node.position?.x === 'number' ? node.position.x : 0,
+              y: typeof node.position?.y === 'number' ? node.position.y : 0
+            },
+            data: node.data ? JSON.parse(JSON.stringify(node.data)) : { label: '' },
+            inputs: Array.isArray(node.inputs) ? node.inputs.map(String) : [],
+            outputs: Array.isArray(node.outputs) ? node.outputs.map(String) : []
+          }));
+          // Testar serialização
+          JSON.stringify(cleanNodes);
         } catch (e) {
-          console.error('Erro ao serializar nodes:', e);
-          cleanNodes = nodes; // Usar original se falhar
+          console.error('Erro ao serializar nodes:', e, nodes);
+          // Em caso de erro, tentar usar nodes originais
+          try {
+            cleanNodes = JSON.parse(JSON.stringify(nodes));
+          } catch (e2) {
+            console.error('Erro crítico ao serializar nodes:', e2);
+            // Se ainda falhar, usar array vazio para evitar erro no servidor
+            cleanNodes = [];
+          }
         }
-      } else if (nodes && Array.isArray(nodes)) {
-        cleanNodes = []; // Array vazio é válido
+      } else if (nodes === undefined || nodes === null) {
+        // Se nodes é undefined/null, não enviar (deixar como está no banco)
+        cleanNodes = undefined;
+      } else {
+        // Se não é array, usar array vazio
+        cleanNodes = [];
       }
       
-      if (edges && Array.isArray(edges) && edges.length > 0) {
+      if (edges && Array.isArray(edges)) {
         try {
-          cleanEdges = JSON.parse(JSON.stringify(edges));
+          // Limpar edges removendo qualquer propriedade não serializável
+          cleanEdges = edges.map(edge => ({
+            id: String(edge.id),
+            source: String(edge.source),
+            sourceHandle: String(edge.sourceHandle || ''),
+            target: String(edge.target),
+            targetHandle: String(edge.targetHandle || '')
+          }));
+          // Testar serialização
+          JSON.stringify(cleanEdges);
         } catch (e) {
-          console.error('Erro ao serializar edges:', e);
-          cleanEdges = edges; // Usar original se falhar
+          console.error('Erro ao serializar edges:', e, edges);
+          // Em caso de erro, tentar usar edges originais
+          try {
+            cleanEdges = JSON.parse(JSON.stringify(edges));
+          } catch (e2) {
+            console.error('Erro crítico ao serializar edges:', e2);
+            // Se ainda falhar, usar array vazio para evitar erro no servidor
+            cleanEdges = [];
+          }
         }
-      } else if (edges && Array.isArray(edges)) {
-        cleanEdges = []; // Array vazio é válido
+      } else if (edges === undefined || edges === null) {
+        // Se edges é undefined/null, não enviar (deixar como está no banco)
+        cleanEdges = undefined;
+      } else {
+        // Se não é array, usar array vazio
+        cleanEdges = [];
       }
 
       // #region agent log
@@ -206,6 +262,10 @@ export default function App() {
 
       console.error('Error saving workflow:', error);
       setSaveStatus('error');
+      
+      // Não limpar o workflow atual em caso de erro - manter os dados na memória
+      // O usuário pode tentar salvar novamente ou fazer outras alterações
+      
       // Resetar para idle após 3 segundos em caso de erro
       setTimeout(() => {
         setSaveStatus('idle');
@@ -278,11 +338,23 @@ export default function App() {
       outputs = ['output'];
     }
 
+    // Garantir que data seja um objeto válido e serializável
+    const nodeData: any = { label };
+    
+    // Inicializar dados específicos do tipo GitHub
+    if (type === 'github-repo') {
+      nodeData.githubRepo = '';
+      nodeData.githubBranch = 'main';
+      nodeData.githubPath = '';
+      nodeData.githubSearchQuery = '';
+      nodeData.githubMode = 'list';
+    }
+
     const newNode: Node = {
       id,
       type,
       position: { x: 100 + Math.random() * 50, y: 100 + Math.random() * 50 },
-      data: { label },
+      data: nodeData,
       inputs,
       outputs
     };
