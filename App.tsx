@@ -458,8 +458,17 @@ export default function App() {
         fetch('http://127.0.0.1:7243/ingest/a7576830-f069-47f1-89e2-c0c545ca634b', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'F',location:'App.tsx:beforeAlternativeMutation',message:'Calling updateWorkflowWithJsonNodes (always)',data:{alternativeArgsKeys:Object.keys(alternativeArgs),nodesJsonLength:alternativeArgs.nodesJson?.length,hasEdgesJson:!!alternativeArgs.edgesJson,hasSettings:!!alternativeArgs.settings},timestamp:Date.now()})}).catch(()=>{});
         // #endregion
         console.log('[DEBUG FRONTEND] Calling updateWorkflowWithJsonNodes (always) with:', alternativeArgs);
-        await updateWorkflowWithJsonNodes(alternativeArgs);
-        console.log('[DEBUG FRONTEND] updateWorkflowWithJsonNodes succeeded');
+        console.log('[DEBUG FRONTEND] updateWorkflowWithJsonNodes function type:', typeof updateWorkflowWithJsonNodes);
+        console.log('[DEBUG FRONTEND] updateWorkflowWithJsonNodes function:', updateWorkflowWithJsonNodes);
+        try {
+          await updateWorkflowWithJsonNodes(alternativeArgs);
+          console.log('[DEBUG FRONTEND] updateWorkflowWithJsonNodes succeeded');
+        } catch (mutationError: any) {
+          console.error('[DEBUG FRONTEND] updateWorkflowWithJsonNodes error:', mutationError);
+          console.error('[DEBUG FRONTEND] Error message:', mutationError?.message);
+          console.error('[DEBUG FRONTEND] Error stack:', mutationError?.stack);
+          throw mutationError; // Re-throw para ser capturado pelo catch externo
+        }
         // #region agent log
         fetch('http://127.0.0.1:7243/ingest/a7576830-f069-47f1-89e2-c0c545ca634b', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'F',location:'App.tsx:alternativeMutationSuccess',message:'updateWorkflowWithJsonNodes succeeded',data:{},timestamp:Date.now()})}).catch(()=>{});
         // #endregion
