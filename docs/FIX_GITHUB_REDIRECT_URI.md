@@ -13,12 +13,13 @@ Isso acontece porque a **Callback URL** configurada no GitHub OAuth App não cor
 
 A URL do callback deve ser a URL do Convex HTTP Actions (termina com `.convex.site`).
 
-**Opção A: Via Convex Dashboard (Recomendado)**
+**Opção A: Via Convex Dashboard**
 1. Acesse: https://dashboard.convex.dev
 2. Selecione seu projeto
-3. Vá em **Settings** → **General**
-4. Procure por **"Site URL"** ou **"HTTP Actions URL"**
+3. Vá em **Settings** → **URL & Deploy Key** (ou procure por informações de URL)
+4. Procure por **"Site URL"** ou **"HTTP Actions URL"** (pode estar listada lá)
 5. A URL será algo como: `https://wry-avocet-85.convex.site`
+6. **OU** veja o nome do deployment no topo do dashboard (ex: `wry-avocet-85`) e use: `https://wry-avocet-85.convex.site`
 
 **Opção B: Via Código (Query de Teste)**
 1. No seu projeto, você pode usar a query `testGitHubConfig`:

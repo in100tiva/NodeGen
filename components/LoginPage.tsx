@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
 import { useAuthActions } from '@convex-dev/auth/react';
+import { useQuery } from 'convex/react';
+import { api } from '../convex/_generated/api';
 import { IconGitHub, IconAlertCircle, IconCheck } from './Icons';
 
 const LoginPage: React.FC = () => {
   const { signIn } = useAuthActions();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const authConfig = useQuery(api.auth.checkAuthConfig);
 
   const handleGitHubSignIn = async () => {
     setIsLoading(true);
@@ -15,7 +18,14 @@ const LoginPage: React.FC = () => {
       await signIn('github');
     } catch (err: any) {
       console.error('Erro ao fazer login:', err);
-      setError(err?.message || 'Erro ao fazer login com GitHub. Tente novamente.');
+      const errorMessage = err?.message || 'Erro ao fazer login com GitHub. Tente novamente.';
+      
+      // Verificar se é erro de redirect_uri
+      if (errorMessage.includes('redirect_uri') || String(err).includes('redirect_uri')) {
+        setError('redirect_uri');
+      } else {
+        setError(errorMessage);
+      }
       setIsLoading(false);
     }
   };
@@ -43,9 +53,36 @@ const LoginPage: React.FC = () => {
 
           {/* Error Message */}
           {error && (
-            <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg flex items-center gap-2">
-              <IconAlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
-              <p className="text-sm text-red-400">{error}</p>
+            <div className="mb-4 p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
+              <div className="flex items-start gap-2 mb-2">
+                <IconAlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  {error === 'redirect_uri' ? (
+                    <>
+                      <p className="text-sm font-medium text-red-400 mb-2">
+                        Erro de configuração: redirect_uri não associada à aplicação
+                      </p>
+                      <p className="text-xs text-red-300/80 mb-3">
+                        A URL de callback no GitHub OAuth App não corresponde à URL do Convex.
+                      </p>
+                      {authConfig?.callbackUrl && authConfig.callbackUrl !== "não disponível" ? (
+                        <div className="mt-3 p-3 bg-zinc-800/50 rounded border border-zinc-700">
+                          <p className="text-xs text-zinc-400 mb-2">Configure esta URL no GitHub OAuth App:</p>
+                          <code className="text-xs text-emerald-400 break-all font-mono">
+                            {authConfig.callbackUrl}
+                          </code>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-zinc-400">
+                          Verifique a documentação: CORRIGIR_REDIRECT_URI_GITHUB.md
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <p className="text-sm text-red-400">{error}</p>
+                  )}
+                </div>
+              </div>
             </div>
           )}
 

@@ -32,8 +32,9 @@ A URL do Convex depende do ambiente:
 3. **OU** verifique no Convex Dashboard:
    - Acesse: https://dashboard.convex.dev
    - Selecione seu projeto
-   - Vá em **Settings** → **General**
-   - Procure por **"Site URL"** ou **"Deployment URL"**
+   - Veja o nome do deployment no topo (ex: `wry-avocet-85`)
+   - A URL será: `https://wry-avocet-85.convex.site`
+   - **OU** vá em **Settings** → **URL & Deploy Key** e procure por informações de URL
 
 ### 2️⃣ Atualizar a Callback URL no GitHub
 
