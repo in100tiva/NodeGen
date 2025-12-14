@@ -8,7 +8,7 @@ const LoginPage: React.FC = () => {
   const { signIn } = useAuthActions();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const authConfig = useQuery(api.auth.checkAuthConfig);
+  const authConfig = useQuery(api.auth.checkAuthConfig) ?? null;
 
   const handleGitHubSignIn = async () => {
     setIsLoading(true);

@@ -32,34 +32,63 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
 // Query para verificar se as variáveis de ambiente estão configuradas
 export const checkAuthConfig = query({
   handler: async () => {
-    const hasClientId = !!process.env.AUTH_GITHUB_ID;
-    const hasClientSecret = !!process.env.AUTH_GITHUB_SECRET;
-    const clientIdLength = process.env.AUTH_GITHUB_ID?.length || 0;
-    const clientSecretLength = process.env.AUTH_GITHUB_SECRET?.length || 0;
-    const siteUrl = process.env.CONVEX_SITE_URL || "não configurado";
-    const callbackUrl = siteUrl !== "não configurado" 
-      ? `${siteUrl}/api/auth/callback/github`
-      : "não disponível";
-    
-    return {
-      configured: hasClientId && hasClientSecret,
-      missing: [
-        ...(hasClientId ? [] : ["AUTH_GITHUB_ID"]),
-        ...(hasClientSecret ? [] : ["AUTH_GITHUB_SECRET"]),
-      ],
-      clientIdLength,
-      clientSecretLength,
-      siteUrl,
-      callbackUrl,
-      message: callbackUrl !== "não disponível" 
+    try {
+      // Acessar variáveis de ambiente de forma segura
+      const clientId: string | undefined = process.env.AUTH_GITHUB_ID;
+      const clientSecret: string | undefined = process.env.AUTH_GITHUB_SECRET;
+      const siteUrl: string | undefined = process.env.CONVEX_SITE_URL;
+      
+      const hasClientId = Boolean(clientId && clientId.length > 0);
+      const hasClientSecret = Boolean(clientSecret && clientSecret.length > 0);
+      const clientIdLength = clientId ? clientId.length : 0;
+      const clientSecretLength = clientSecret ? clientSecret.length : 0;
+      
+      const missing: string[] = [];
+      if (!hasClientId) missing.push("AUTH_GITHUB_ID");
+      if (!hasClientSecret) missing.push("AUTH_GITHUB_SECRET");
+      
+      const siteUrlStr = siteUrl ? String(siteUrl) : "não configurado";
+      const callbackUrl = siteUrl 
+        ? `${String(siteUrl)}/api/auth/callback/github`
+        : "não disponível";
+      
+      const message = callbackUrl !== "não disponível" 
         ? `Configure esta URL no GitHub OAuth App: ${callbackUrl}`
-        : "CONVEX_SITE_URL não está disponível",
-      debug: {
-        hasClientId,
-        hasClientSecret,
-        providersConfigured: hasClientId && hasClientSecret,
-      },
-    };
+        : "CONVEX_SITE_URL não está disponível";
+      
+      return {
+        configured: hasClientId && hasClientSecret,
+        missing: missing,
+        clientIdLength: Number(clientIdLength),
+        clientSecretLength: Number(clientSecretLength),
+        siteUrl: String(siteUrlStr),
+        callbackUrl: String(callbackUrl),
+        message: String(message),
+        debug: {
+          hasClientId: Boolean(hasClientId),
+          hasClientSecret: Boolean(hasClientSecret),
+          providersConfigured: Boolean(hasClientId && hasClientSecret),
+        },
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error("Erro em checkAuthConfig:", errorMessage);
+      return {
+        configured: false,
+        missing: ["AUTH_GITHUB_ID", "AUTH_GITHUB_SECRET"],
+        clientIdLength: 0,
+        clientSecretLength: 0,
+        siteUrl: "erro ao obter",
+        callbackUrl: "não disponível",
+        message: `Erro ao verificar configuração: ${errorMessage}`,
+        debug: {
+          hasClientId: false,
+          hasClientSecret: false,
+          providersConfigured: false,
+          error: errorMessage,
+        },
+      };
+    }
   },
 });
 
