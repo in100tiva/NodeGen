@@ -528,16 +528,23 @@ export const updateWorkflowWithJsonNodes = mutation({
   },
   handler: async (ctx, args) => {
     // Log imediato no início - DEVE aparecer no Convex Dashboard
+    // Se este log não aparecer, o erro está na validação de argumentos ANTES do handler
     console.error('[ALTERNATIVE HANDLER ENTRY] updateWorkflowWithJsonNodes called with:', {
       id: String(args.id),
       hasNodesJson: args.nodesJson !== undefined,
       nodesJsonLength: args.nodesJson?.length || 0,
+      nodesJsonType: typeof args.nodesJson,
       hasEdgesJson: args.edgesJson !== undefined,
       edgesJsonLength: args.edgesJson?.length || 0,
+      edgesJsonType: typeof args.edgesJson,
       hasSettings: args.settings !== undefined,
+      settingsType: typeof args.settings,
       argsKeys: Object.keys(args),
       argsStringified: JSON.stringify(args).substring(0, 1000)
     });
+    
+    // Se chegou aqui, o handler está sendo chamado
+    // Se este log não aparecer no Convex Dashboard, o erro está na validação de argumentos
     
     try {
       const workflow = await ctx.db.get(args.id);
@@ -641,8 +648,9 @@ export const updateWorkflowWithJsonNodes = mutation({
           throw new Error(`Erro ao parsear edgesJson: ${e.message}`);
         }
       } else if (args.edgesJson === '[]' || args.edgesJson?.trim() === '') {
-        // Se edgesJson é array vazio, não atualizar edges (deixar como está)
-        console.error('[ALTERNATIVE] edgesJson is empty, skipping edges update');
+        // Se edgesJson é array vazio, definir edges como array vazio
+        console.error('[ALTERNATIVE] edgesJson is empty, setting edges to empty array');
+        updateData.edges = [];
       }
       
       // Settings
