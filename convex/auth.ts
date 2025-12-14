@@ -1,6 +1,6 @@
 import { convexAuth } from "@convex-dev/auth/server";
 import GitHub from "@auth/core/providers/github";
-import { query } from "./_generated/server";
+import { query, action } from "./_generated/server";
 
 // Obter variáveis de ambiente (podem estar indefinidas durante o deploy)
 const clientId = process.env.AUTH_GITHUB_ID;
@@ -22,6 +22,17 @@ if (providers.length === 0) {
   console.warn(
     "⚠️ AUTH_GITHUB_ID ou AUTH_GITHUB_SECRET não estão configuradas. " +
     "Configure em: https://dashboard.convex.dev → Settings → Environment Variables"
+  );
+}
+
+// Verificar se SITE_URL está configurada (necessária para Convex Auth)
+const siteUrl = process.env.SITE_URL;
+if (!siteUrl) {
+  console.warn(
+    "⚠️ SITE_URL não está configurada. " +
+    "Configure em: https://dashboard.convex.dev → Settings → Environment Variables\n" +
+    "Para produção, use: https://cautious-buzzard-249.convex.site\n" +
+    "Para desenvolvimento, use: http://localhost:3000"
   );
 }
 
@@ -62,6 +73,34 @@ export const getCurrentUser = query({
       name: identity.name,
       email: identity.email,
       pictureUrl: identity.pictureUrl,
+    };
+  },
+});
+
+// Action para verificar configuração de autenticação (pode acessar process.env)
+export const checkAuthConfig = action({
+  handler: async () => {
+    const clientId = process.env.AUTH_GITHUB_ID;
+    const clientSecret = process.env.AUTH_GITHUB_SECRET;
+    const siteUrl = process.env.SITE_URL;
+    const convexSiteUrl = process.env.CONVEX_SITE_URL;
+    
+    return {
+      hasClientId: !!clientId,
+      hasClientSecret: !!clientSecret,
+      hasSiteUrl: !!siteUrl,
+      hasConvexSiteUrl: !!convexSiteUrl,
+      siteUrl: siteUrl || null,
+      convexSiteUrl: convexSiteUrl || null,
+      callbackUrl: convexSiteUrl 
+        ? `${convexSiteUrl}/api/auth/callback/github`
+        : null,
+      configured: !!(clientId && clientSecret && siteUrl),
+      missing: [
+        ...(!clientId ? ["AUTH_GITHUB_ID"] : []),
+        ...(!clientSecret ? ["AUTH_GITHUB_SECRET"] : []),
+        ...(!siteUrl ? ["SITE_URL"] : []),
+      ],
     };
   },
 });

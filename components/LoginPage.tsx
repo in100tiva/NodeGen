@@ -1,25 +1,89 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuthActions } from '@convex-dev/auth/react';
+import { useAction } from 'convex/react';
+import { api } from '../convex/_generated/api';
 import { IconGitHub, IconAlertCircle, IconCheck } from './Icons';
 
 const LoginPage: React.FC = () => {
   const { signIn } = useAuthActions();
+  const checkAuthConfig = useAction(api.auth.checkAuthConfig);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [configError, setConfigError] = useState<string | null>(null);
+  const [isCheckingConfig, setIsCheckingConfig] = useState(true);
+
+  // Verificar configuração ao carregar
+  useEffect(() => {
+    const verifyConfig = async () => {
+      try {
+        setIsCheckingConfig(true);
+        const config = await checkAuthConfig();
+        
+        if (!config.configured) {
+          const missingVars = config.missing.join(', ');
+          setConfigError(
+            `Configuração incompleta: faltam as variáveis ${missingVars}. ` +
+            `Configure em: https://dashboard.convex.dev → Settings → Environment Variables`
+          );
+        } else {
+          setConfigError(null);
+        }
+      } catch (err) {
+        console.error('Erro ao verificar configuração:', err);
+        setConfigError('Não foi possível verificar a configuração do servidor.');
+      } finally {
+        setIsCheckingConfig(false);
+      }
+    };
+
+    verifyConfig();
+  }, [checkAuthConfig]);
 
   const handleGitHubSignIn = async () => {
     setIsLoading(true);
     setError(null);
     
     try {
+      console.log('[LoginPage] Iniciando autenticação GitHub...');
+      
+      // Verificar se estamos em produção
+      const isProduction = window.location.hostname !== 'localhost' && !window.location.hostname.includes('127.0.0.1');
+      console.log('[LoginPage] Ambiente:', isProduction ? 'Produção' : 'Desenvolvimento');
+      console.log('[LoginPage] URL atual:', window.location.href);
+      
+      // Chamar signIn - isso deve redirecionar automaticamente
       await signIn('github');
+      
+      // Se chegou aqui sem redirecionar, pode ser um problema
+      // Mas não vamos definir isLoading como false imediatamente
+      // pois o redirecionamento pode estar em andamento
+      console.log('[LoginPage] signIn chamado com sucesso, aguardando redirecionamento...');
+      
     } catch (err: any) {
-      console.error('Erro ao fazer login:', err);
-      const errorMessage = err?.message || 'Erro ao fazer login com GitHub. Tente novamente.';
+      console.error('[LoginPage] Erro ao fazer login:', err);
+      console.error('[LoginPage] Detalhes do erro:', {
+        message: err?.message,
+        stack: err?.stack,
+        name: err?.name,
+        cause: err?.cause,
+        fullError: String(err)
+      });
+      
+      const errorMessage = err?.message || String(err) || 'Erro ao fazer login com GitHub. Tente novamente.';
       
       // Verificar se é erro de redirect_uri
       if (errorMessage.includes('redirect_uri') || String(err).includes('redirect_uri')) {
         setError('redirect_uri');
+      } else if (errorMessage.includes('Server Error') || errorMessage.includes('CONVEX')) {
+        // Erro do servidor Convex - fornecer informações mais detalhadas
+        setError(
+          `Erro no servidor Convex: ${errorMessage}\n\n` +
+          `Possíveis causas:\n` +
+          `1. Variável SITE_URL não configurada no Convex Dashboard\n` +
+          `2. AUTH_GITHUB_ID ou AUTH_GITHUB_SECRET não configuradas\n` +
+          `3. URL de callback incorreta no GitHub OAuth App\n\n` +
+          `Verifique: https://dashboard.convex.dev → Settings → Environment Variables`
+        );
       } else {
         setError(errorMessage);
       }
@@ -48,6 +112,21 @@ const LoginPage: React.FC = () => {
             </p>
           </div>
 
+          {/* Config Error Message */}
+          {configError && (
+            <div className="mb-4 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+              <div className="flex items-start gap-2">
+                <IconAlertCircle className="w-4 h-4 text-yellow-400 shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-yellow-400 mb-1">
+                    ⚠️ Configuração do Servidor
+                  </p>
+                  <p className="text-xs text-yellow-300/80">{configError}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Error Message */}
           {error && (
             <div className="mb-4 p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
@@ -65,10 +144,16 @@ const LoginPage: React.FC = () => {
                       <div className="mt-3 p-3 bg-zinc-800/50 rounded border border-zinc-700">
                         <p className="text-xs text-zinc-400 mb-2">A URL de callback deve ser:</p>
                         <code className="text-xs text-emerald-400 break-all font-mono">
-                          https://wry-avocet-85.convex.site/api/auth/callback/github
+                          https://cautious-buzzard-249.convex.site/api/auth/callback/github
                         </code>
                         <p className="text-xs text-zinc-500 mt-2">
-                          (Substitua wry-avocet-85 pelo nome do seu deployment Convex)
+                          ⚠️ IMPORTANTE: A URL deve terminar com <strong>/callback/github</strong>
+                        </p>
+                        <p className="text-xs text-red-400 mt-2">
+                          ❌ ERRADO: .../api/auth (sem /callback/github)
+                        </p>
+                        <p className="text-xs text-emerald-400 mt-1">
+                          ✅ CORRETO: .../api/auth/callback/github
                         </p>
                       </div>
                       <p className="text-xs text-zinc-400 mt-2">
@@ -86,13 +171,15 @@ const LoginPage: React.FC = () => {
           {/* GitHub Login Button */}
           <button
             onClick={handleGitHubSignIn}
-            disabled={isLoading}
+            disabled={isLoading || isCheckingConfig || !!configError}
             className="w-full flex items-center justify-center gap-3 px-6 py-3 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 hover:border-zinc-600 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed group"
           >
-            {isLoading ? (
+            {isLoading || isCheckingConfig ? (
               <>
                 <div className="w-5 h-5 border-2 border-zinc-400 border-t-transparent rounded-full animate-spin"></div>
-                <span className="text-zinc-200 font-medium">Conectando...</span>
+                <span className="text-zinc-200 font-medium">
+                  {isCheckingConfig ? 'Verificando configuração...' : 'Conectando...'}
+                </span>
               </>
             ) : (
               <>
