@@ -1,7 +1,7 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
-import { ConvexReactClient } from 'convex/react';
-import { ConvexAuthProvider, Authenticated, Unauthenticated } from '@convex-dev/auth/react';
+import { ConvexReactClient, Authenticated, Unauthenticated } from 'convex/react';
+import { ConvexAuthProvider } from '@convex-dev/auth/react';
 import App from './App';
 import LoginPage from './components/LoginPage';
 import './index.css';
